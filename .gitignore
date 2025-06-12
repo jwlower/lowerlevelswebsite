@@ -128,3 +128,6 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+/.vs/lowerlevelswebsite/CopilotIndices/0.2.1657.32929
+/.vs/lowerlevelswebsite/FileContentIndex
+/.vs
