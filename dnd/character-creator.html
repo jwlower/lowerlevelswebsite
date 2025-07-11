@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D&D 2024 Character Creator</title>
+    <link rel="stylesheet" href="../styles.css">
+    <style>
+        .character-sheet {
+            max-width: 8.5in;
+            margin: 0 auto;
+            padding: 0.5in;
+            background: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            font-size: 12px;
+            line-height: 1.2;
+            color: black;
+        }
+
+        .top-block {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .character-info-block {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+            padding: 10px;
+            border: 1px solid #000;
+            border-radius: 4px;
+        }
+
+        .combat-stats-block {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 8px;
+            padding: 10px;
+            border: 1px solid #000;
+            border-radius: 4px;
+        }
+
+        .top-section {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .top-section h3 {
+            margin: 0 0 5px 0;
+            color: black;
+            border-bottom: 1px solid #000;
+            padding-bottom: 3px;
+            font-size: 14px;
+        }
+
+        .block-title {
+            margin: 0 0 5px 0;
+            color: black;
+            border-bottom: 1px solid #000;
+            padding-bottom: 3px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            margin-bottom: 3px;
+        }
+
+        .form-group label {
+            font-weight: bold;
+            font-size: 10px;
+            color: black;
+        }
+
+        .form-group input, .form-group select {
+            padding: 4px;
+            border: 1px solid #000;
+            border-radius: 2px;
+            font-size: 11px;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #000;
+            box-shadow: 0 0 3px rgba(0,0,0,0.3);
+        }
+
+        /* Special styles for important combat numbers */
+        .combat-number {
+            font-size: px;
+            font-weight: bold;
+            text-align: center;
+            padding: 8px 4px;
+            border: 2px solid #000;
+            border-radius: 4px;
+            background: #f8f8f8;
+            max-width: 30px;
+            min-width: 30px;
+        }
+
+        .hp-current {
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+            padding: 10px 4px;
+            border: 2px solid #000;
+            border-radius: 4px;
+            background: #f0f0f0;
+        }
+
+        .hp-max {
+            font-size: 14px;
+            text-align: center;
+            padding: 4px;
+            border: 1px solid #000;
+            border-radius: 2px;
+            background: #f8f8f8;
+        }
+
+        .small-input {
+            font-size: 10px;
+            padding: 2px;
+            text-align: center;
+            max-width: 30px;
+        }
+
+        .medium-input {
+            font-size: 12px;
+            padding: 4px;
+            text-align: center;
+            max-width: 60px;
+        }
+
+        .abilities-block {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #333;
+            border-radius: 4px;
+        }
+
+        .ability-column {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .ability-column h3 {
+            text-align: center;
+            margin: 0 0 5px 0;
+            color: #333;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 3px;
+            font-size: 12px;
+        }
+
+        .ability-score {
+            text-align: center;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .skills-list {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .skill-item {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            margin-bottom: 1px;
+        }
+
+        .skill-item input[type="checkbox"] {
+            margin: 0;
+            transform: scale(0.8);
+        }
+
+        .skill-item label {
+            font-size: 8px;
+            margin: 0;
+        }
+
+        .ability-score {
+            font-size: 14px;
+            font-weight: bold;
+            text-align: center;
+            padding: 4px;
+            border: 1px solid #000;
+            border-radius: 2px;
+            background: #f8f8f8;
+        }
+
+        .ability-modifier {
+            font-size: 12px;
+            text-align: center;
+            padding: 2px;
+            border: 1px solid #000;
+            border-radius: 2px;
+            background: #f0f0f0;
+        }
+
+        .stats-block {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #333;
+            border-radius: 4px;
+        }
+
+        .proficiencies-block {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #333;
+            border-radius: 4px;
+        }
+
+        .weapons-table {
+            width: 100%;
+            margin-bottom: 15px;
+            border-collapse: collapse;
+            font-size: 10px;
+        }
+
+        .weapons-table th, .weapons-table td {
+            border: 1px solid #ccc;
+            padding: 4px;
+            text-align: left;
+        }
+
+        .weapons-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            font-size: 11px;
+        }
+
+        .weapons-table input {
+            width: 100%;
+            border: none;
+            background: transparent;
+            padding: 2px;
+            font-size: 9px;
+        }
+
+        .weapons-table input:focus {
+            outline: none;
+            background-color: #f0f8ff;
+        }
+
+        .features-block {
+            margin-bottom: 15px;
+        }
+
+        .features-block h3 {
+            margin: 0 0 5px 0;
+            color: #333;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 3px;
+            font-size: 12px;
+        }
+
+        .features-block textarea {
+            width: 100%;
+            min-height: 80px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 2px;
+            font-family: inherit;
+            font-size: 10px;
+            resize: vertical;
+        }
+
+        .features-block textarea:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 5px rgba(0,123,255,0.3);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin: 30px 0;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #545b62;
+        }
+
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background-color: #1e7e34;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-label {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #17a2b8;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .file-label:hover {
+            background-color: #138496;
+        }
+
+        .header-nav {
+            margin-bottom: 20px;
+        }
+
+        .header-nav a {
+            color: #007bff;
+            text-decoration: none;
+            margin-right: 15px;
+        }
+
+        .header-nav a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .top-block, .abilities-block, .stats-block, .proficiencies-block {
+                grid-template-columns: 1fr;
+            }
+            
+            .character-sheet {
+                padding: 10px;
+            }
+        }
+
+        /* Print styles */
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+                background: white;
+            }
+            
+            .character-sheet {
+                max-width: none;
+                padding: 0.25in;
+                box-shadow: none;
+                font-size: 10px;
+            }
+            
+            .action-buttons, .header-nav {
+                display: none !important;
+            }
+            
+            .top-block, .abilities-block, .stats-block, .proficiencies-block {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            
+            .weapons-table {
+                font-size: 8px;
+            }
+            
+            .weapons-table th, .weapons-table td {
+                padding: 2px;
+            }
+            
+            .weapons-table input {
+                font-size: 8px;
+            }
+            
+            .features-block textarea {
+                min-height: 60px;
+                font-size: 9px;
+            }
+            
+            .form-group input, .form-group select {
+                font-size: 10px;
+                padding: 2px;
+            }
+            
+            .skill-item label {
+                font-size: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="character-sheet">
+        <div class="header-nav">
+            <a href="index.html">← Back to D&D Resources</a>
+        </div>
+        
+        <h1>D&D 2024 Character Creator</h1>
+        
+        <form id="characterForm">
+            <!-- TOP BLOCK -->
+            <div class="top-block">
+                <!-- Character Information Block -->
+                <div class="character-info-block">
+                    <div class="form-group">
+                        <label for="characterName">Character Name:</label>
+                        <input type="text" id="characterName" name="characterName" placeholder="Enter character name">
+                    </div>
+                    <div class="form-group">
+                        <label for="background">Background:</label>
+                        <input type="text" id="background" name="background" placeholder="e.g., Soldier">
+                    </div>
+                    <div class="form-group">
+                        <label for="class">Class:</label>
+                        <input type="text" id="class" name="class" placeholder="e.g., Fighter">
+                    </div>
+                    <div class="form-group">
+                        <label for="species">Species:</label>
+                        <input type="text" id="species" name="species" placeholder="e.g., Human">
+                    </div>
+                    <div class="form-group">
+                        <label for="level">Level:</label>
+                        <input type="number" id="level" name="level" min="1" max="20" class="combat-number">
+                    </div>
+                    <div class="form-group">
+                        <label for="xp">XP:</label>
+                        <input type="number" id="xp" name="xp" min="0" class="medium-input" maxlength="8">
+                    </div>
+                </div>
+
+                <!-- Combat Stats Block -->
+                <div class="combat-stats-block">
+                    <div class="form-group">
+                        <label for="armorClass">AC:</label>
+                        <input type="number" id="armorClass" name="armorClass" min="1" class="combat-number" maxlength="2">
+                    </div>
+                    <div class="form-group">
+                        <label for="currentHP">Current HP:</label>
+                        <input type="number" id="currentHP" name="currentHP" min="0" class="hp-current" maxlength="4">
+                    </div>
+                    <div class="form-group">
+                        <label for="maxHP">Max HP:</label>
+                        <input type="number" id="maxHP" name="maxHP" min="1" class="hp-max" maxlength="4">
+                    </div>
+                    <div class="form-group">
+                        <label for="tempHP">Temp HP:</label>
+                        <input type="number" id="tempHP" name="tempHP" min="0" class="small-input" maxlength="2">
+                    </div>
+                    <div class="form-group">
+                        <label for="proficiencyBonus">Prof Bonus:</label>
+                        <input type="text" id="proficiencyBonus" name="proficiencyBonus" placeholder="+2" class="combat-number">
+                    </div>
+                    <div class="form-group">
+                        <label for="hitDice">Hit Dice:</label>
+                        <input type="text" id="hitDice" name="hitDice" placeholder="2d8" class="small-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="hitDiceSpent">Spent:</label>
+                        <input type="number" id="hitDiceSpent" name="hitDiceSpent" min="0" class="small-input" maxlength="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="hitDiceMax">Max:</label>
+                        <input type="number" id="hitDiceMax" name="hitDiceMax" min="0" class="small-input" maxlength="1">
+                    </div>
+                </div>
+            </div>
+
+            <!-- ABILITIES BLOCK -->
+            <div class="abilities-block">
+                <div class="ability-column">
+                    <h3>Strength</h3>
+                    <div class="ability-score">
+                        <input type="number" id="strScore" name="strScore" min="1" max="20" placeholder="10">
+                    </div>
+                    <div class="ability-modifier">
+                        <input type="number" id="strModifier" name="strModifier" readonly>
+                    </div>
+                    <div class="skill-item">
+                        <input type="checkbox" id="strSave" name="strSave">
+                        <label for="strSave">Save</label>
+                    </div>
+                    <div class="skill-item">
+                        <input type="checkbox" id="athletics" name="athletics">
+                        <label for="athletics">Athletics</label>
+                    </div>
+                </div>
+
+                <div class="ability-column">
+                    <h3>Dexterity</h3>
+                    <div class="ability-score">
+                        <input type="number" id="dexScore" name="dexScore" min="1" max="20" placeholder="10">
+                    </div>
+                    <div class="ability-modifier">
+                        <input type="number" id="dexModifier" name="dexModifier" readonly>
+                    </div>
+                    <div class="skill-item">
+                        <input type="checkbox" id="dexSave" name="dexSave">
+                        <label for="dexSave">Save</label>
+                    </div>
+                    <div class="skill-item">
+                        <input type="checkbox" id="acrobatics" name="acrobatics">
+                        <label for="acrobatics">Acrobatics</label>
+                    </div>
+                    <div class="skill-item">
+                        <input type="checkbox" id="sleightOfHand" name="sleightOfHand">
+                        <label for="sleightOfHand">Sleight</label>
+                    </div>
+                    <div class="skill-item">
+                        <input type="checkbox" id="stealth" name="stealth">
+                        <label for="stealth">Stealth</label>
+                    </div>
+                </div>
+
+                <div class="ability-column">
+                    <h3>Constitution</h3>
+                    <div class="ability-score">
+                        <input type="number" id="conScore" name="conScore" min="1" max="20" placeholder="10">
+                    </div>
+                    <div class="ability-modifier">
+                        <input type="number" id="conModifier" name="conModifier" readonly>
+                    </div>
+                    <div class="skill-item">
+                        <input type="checkbox" id="conSave" name="conSave">
+                        <label for="conSave">Save</label>
+                    </div>
+                </div>
+
+                <div class="ability-column">
+                    <h3>Intelligence</h3>
+                    <div class="ability-score">
+                        <input type="number" id="intScore" name="intScore" min="1" max="20" placeholder="10">
+                    </div>
+                    <div class="ability-modifier">
+                        <input type="number" id="intModifier" name="intModifier" readonly>
+                    </div>
+                    <div class="skill-item">
+                        <input type="checkbox" id="intSave" name="intSave">
+                        <label for="intSave">Save</label>
+                    </div>
+                    <div class="skill-item">
+                        <input type="checkbox" id="arcana" name="arcana">
+                        <label for="arcana">Arcana</label>
+                    </div>
+                    <div class="skill-item">
+                        <input type="checkbox" id="history" name="history">
+                        <label for="history">History</label>
+                    </div>
+                    <div class="skill-item">
+                        <input type="checkbox" id="investigation" name="investigation">
+                        <label for="investigation">Investigation</label>
+                    </div>
+                    <div class="skill-item">
+                        <input type="checkbox" id="nature" name="nature">
+                        <label for="nature">Nature</label>
+                    </div>
+                    <div class="skill-item">
+                        <input type="checkbox" id="religion" name="religion">
+                        <label for="religion">Religion</label>
+                    </div>
+                </div>
+
+                <div class="ability-column">
+                    <h3>Wisdom</h3>
+                    <div class="ability-score">
+                        <input type="number" id="wisScore" name="wisScore" min="1" max="20" placeholder="10">
+                    </div>
+                    <div class="ability-modifier">
+                        <input type="number" id="wisModifier" name="wisModifier" readonly>
+                    </div>
+                    <div class="skill-item">
+                        <input type="checkbox" id="wisSave" name="wisSave">
+                        <label for="wisSave">Save</label>
+                    </div>
+                    <div class="skill-item">
+                        <input type="checkbox" id="animalHandling" name="animalHandling">
+                        <label for="animalHandling">Animal</label>
+                    </div>
+                    <div class="skill-item">
+                        <input type="checkbox" id="insight" name="insight">
+                        <label for="insight">Insight</label>
+                    </div>
+                    <div class="skill-item">
+                        <input type="checkbox" id="medicine" name="medicine">
+                        <label for="medicine">Medicine</label>
+                    </div>
+                    <div class="skill-item">
+                        <input type="checkbox" id="perception" name="perception">
+                        <label for="perception">Perception</label>
+                    </div>
+                    <div class="skill-item">
+                        <input type="checkbox" id="survival" name="survival">
+                        <label for="survival">Survival</label>
+                    </div>
+                </div>
+
+                <div class="ability-column">
+                    <h3>Charisma</h3>
+                    <div class="ability-score">
+                        <input type="number" id="chaScore" name="chaScore" min="1" max="20" placeholder="10">
+                    </div>
+                    <div class="ability-modifier">
+                        <input type="number" id="chaModifier" name="chaModifier" readonly>
+                    </div>
+                    <div class="skill-item">
+                        <input type="checkbox" id="chaSave" name="chaSave">
+                        <label for="chaSave">Save</label>
+                    </div>
+                    <div class="skill-item">
+                        <input type="checkbox" id="deception" name="deception">
+                        <label for="deception">Deception</label>
+                    </div>
+                    <div class="skill-item">
+                        <input type="checkbox" id="intimidation" name="intimidation">
+                        <label for="intimidation">Intimidation</label>
+                    </div>
+                    <div class="skill-item">
+                        <input type="checkbox" id="performance" name="performance">
+                        <label for="performance">Performance</label>
+                    </div>
+                    <div class="skill-item">
+                        <input type="checkbox" id="persuasion" name="persuasion">
+                        <label for="persuasion">Persuasion</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STATS BLOCK -->
+            <div class="stats-block">
+                <div class="form-group">
+                    <label for="initiative">Initiative:</label>
+                    <input type="number" id="initiative" name="initiative" value="0" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="speed">Speed:</label>
+                    <input type="number" id="speed" name="speed" min="0" value="30">
+                </div>
+                <div class="form-group">
+                    <label for="size">Size:</label>
+                    <select id="size" name="size">
+                        <option value="Tiny">Tiny</option>
+                        <option value="Small">Small</option>
+                        <option value="Medium" selected>Medium</option>
+                        <option value="Large">Large</option>
+                        <option value="Huge">Huge</option>
+                        <option value="Gargantuan">Gargantuan</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="passivePerception">Passive Perception:</label>
+                    <input type="number" id="passivePerception" name="passivePerception" value="10" readonly>
+                </div>
+            </div>
+
+            <!-- PROFICIENCIES BLOCK -->
+            <div class="proficiencies-block">
+                <div class="form-group">
+                    <label for="armorTraining">Armor Training:</label>
+                    <textarea id="armorTraining" name="armorTraining" placeholder="List armor proficiencies..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="weapons">Weapons:</label>
+                    <textarea id="weapons" name="weapons" placeholder="List weapon proficiencies..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="tools">Tools:</label>
+                    <textarea id="tools" name="tools" placeholder="List tool proficiencies..."></textarea>
+                </div>
+            </div>
+
+            <!-- WEAPONS & DAMAGE CANTRIPS TABLE -->
+            <h3>Weapons & Damage Cantrips</h3>
+            <table class="weapons-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Atk Bonus/DC</th>
+                        <th>Dmg & Type</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><input type="text" name="weapon1Name" placeholder="Weapon/Cantrip name"></td>
+                        <td><input type="text" name="weapon1Bonus" placeholder="+X or DC X"></td>
+                        <td><input type="text" name="weapon1Damage" placeholder="1d6 slashing"></td>
+                        <td><input type="text" name="weapon1Notes" placeholder="Special properties"></td>
+                    </tr>
+                    <tr>
+                        <td><input type="text" name="weapon2Name" placeholder="Weapon/Cantrip name"></td>
+                        <td><input type="text" name="weapon2Bonus" placeholder="+X or DC X"></td>
+                        <td><input type="text" name="weapon2Damage" placeholder="1d6 slashing"></td>
+                        <td><input type="text" name="weapon2Notes" placeholder="Special properties"></td>
+                    </tr>
+                    <tr>
+                        <td><input type="text" name="weapon3Name" placeholder="Weapon/Cantrip name"></td>
+                        <td><input type="text" name="weapon3Bonus" placeholder="+X or DC X"></td>
+                        <td><input type="text" name="weapon3Damage" placeholder="1d6 slashing"></td>
+                        <td><input type="text" name="weapon3Notes" placeholder="Special properties"></td>
+                    </tr>
+                    <tr>
+                        <td><input type="text" name="weapon4Name" placeholder="Weapon/Cantrip name"></td>
+                        <td><input type="text" name="weapon4Bonus" placeholder="+X or DC X"></td>
+                        <td><input type="text" name="weapon4Damage" placeholder="1d6 slashing"></td>
+                        <td><input type="text" name="weapon4Notes" placeholder="Special properties"></td>
+                    </tr>
+                    <tr>
+                        <td><input type="text" name="weapon5Name" placeholder="Weapon/Cantrip name"></td>
+                        <td><input type="text" name="weapon5Bonus" placeholder="+X or DC X"></td>
+                        <td><input type="text" name="weapon5Damage" placeholder="1d6 slashing"></td>
+                        <td><input type="text" name="weapon5Notes" placeholder="Special properties"></td>
+                    </tr>
+                    <tr>
+                        <td><input type="text" name="weapon6Name" placeholder="Weapon/Cantrip name"></td>
+                        <td><input type="text" name="weapon6Bonus" placeholder="+X or DC X"></td>
+                        <td><input type="text" name="weapon6Damage" placeholder="1d6 slashing"></td>
+                        <td><input type="text" name="weapon6Notes" placeholder="Special properties"></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- CLASS FEATURES -->
+            <div class="features-block">
+                <h3>Class Features</h3>
+                <textarea id="classFeatures" name="classFeatures" placeholder="List your class features, abilities, and special traits here..."></textarea>
+            </div>
+
+            <!-- SPECIES TRAITS & FEATS -->
+            <div class="features-block">
+                <h3>Species Traits & Feats</h3>
+                <textarea id="speciesTraits" name="speciesTraits" placeholder="List your species traits, racial abilities, and feats here..."></textarea>
+            </div>
+
+            <!-- ACTION BUTTONS -->
+            <div class="action-buttons">
+                <button type="button" class="btn btn-primary" onclick="saveCharacter()">Save Character</button>
+                <button type="button" class="btn btn-success" onclick="exportToPDF()">Export to PDF</button>
+                <label for="fileInput" class="file-label">Load Character</label>
+                <input type="file" id="fileInput" class="file-input" accept=".json" onchange="loadCharacter(event)">
+                <button type="button" class="btn btn-secondary" onclick="resetForm()">Reset Form</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // Auto-calculate ability modifiers
+        function calculateModifier(score) {
+            return Math.floor((score - 10) / 2);
+        }
+
+        // Update proficiency bonus based on level (optional helper)
+        function updateProficiencyBonus() {
+            const level = parseInt(document.getElementById('level').value) || 1;
+            const bonus = Math.floor((level - 1) / 4) + 2;
+            // Only update if the field is empty or user wants to auto-calculate
+            const currentValue = document.getElementById('proficiencyBonus').value;
+            if (!currentValue || currentValue === '') {
+                document.getElementById('proficiencyBonus').value = '+' + bonus;
+            }
+        }
+
+        // Update all ability modifiers
+        function updateAbilityModifiers() {
+            const abilities = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+            abilities.forEach(ability => {
+                const score = parseInt(document.getElementById(ability + 'Score').value) || 10;
+                const modifier = calculateModifier(score);
+                document.getElementById(ability + 'Modifier').value = modifier;
+            });
+        }
+
+        // Update initiative (Dex modifier)
+        function updateInitiative() {
+            const dexModifier = parseInt(document.getElementById('dexModifier').value) || 0;
+            document.getElementById('initiative').value = dexModifier;
+        }
+
+        // Update passive perception (10 + Wis modifier + proficiency if perception is checked)
+        function updatePassivePerception() {
+            const wisModifier = parseInt(document.getElementById('wisModifier').value) || 0;
+            const perceptionChecked = document.getElementById('perception').checked;
+            const proficiencyBonus = parseInt(document.getElementById('proficiencyBonus').value) || 2;
+            const passive = 10 + wisModifier + (perceptionChecked ? proficiencyBonus : 0);
+            document.getElementById('passivePerception').value = passive;
+        }
+
+        // Add event listeners for auto-calculation
+        document.addEventListener('DOMContentLoaded', function() {
+            // Ability score inputs
+            const abilityScores = ['strScore', 'dexScore', 'conScore', 'intScore', 'wisScore', 'chaScore'];
+            abilityScores.forEach(id => {
+                document.getElementById(id).addEventListener('input', function() {
+                    updateAbilityModifiers();
+                    updateInitiative();
+                    updatePassivePerception();
+                });
+            });
+
+            // Level input
+            document.getElementById('level').addEventListener('input', function() {
+                updateProficiencyBonus();
+                updatePassivePerception();
+            });
+
+            // Perception checkbox
+            document.getElementById('perception').addEventListener('change', updatePassivePerception);
+
+            // Initialize calculations
+            updateAbilityModifiers();
+            updateProficiencyBonus();
+            updateInitiative();
+            updatePassivePerception();
+        });
+
+        // Save character to JSON
+        function saveCharacter() {
+            const formData = new FormData(document.getElementById('characterForm'));
+            const characterData = {};
+            
+            for (let [key, value] of formData.entries()) {
+                characterData[key] = value;
+            }
+
+            // Add checkbox values
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                characterData[checkbox.name] = checkbox.checked;
+            });
+
+            const dataStr = JSON.stringify(characterData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `${characterData.characterName || 'character'}.json`;
+            link.click();
+        }
+
+        // Load character from JSON
+        function loadCharacter(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const characterData = JSON.parse(e.target.result);
+                    
+                    // Populate form fields
+                    Object.keys(characterData).forEach(key => {
+                        const element = document.getElementById(key) || document.querySelector(`[name="${key}"]`);
+                        if (element) {
+                            if (element.type === 'checkbox') {
+                                element.checked = characterData[key] === true;
+                            } else {
+                                element.value = characterData[key];
+                            }
+                        }
+                    });
+
+                    // Update calculations
+                    updateAbilityModifiers();
+                    updateProficiencyBonus();
+                    updateInitiative();
+                    updatePassivePerception();
+
+                    alert('Character loaded successfully!');
+                } catch (error) {
+                    alert('Error loading character file: ' + error.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Reset form
+        function resetForm() {
+            if (confirm('Are you sure you want to reset the form? All data will be lost.')) {
+                document.getElementById('characterForm').reset();
+                updateAbilityModifiers();
+                updateProficiencyBonus();
+                updateInitiative();
+                updatePassivePerception();
+            }
+        }
+
+        // Export to PDF (placeholder - would need a PDF library like jsPDF)
+        function exportToPDF() {
+            alert('PDF export functionality will be implemented in the next phase. For now, you can save your character as a JSON file and load it later.');
+        }
+    </script>
+</body>
+</html> 
