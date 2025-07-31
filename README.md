@@ -13,7 +13,12 @@ Hosting: You can upload this to Neocities for a retro vibe or GitHub Pages for f
  - Hosting neocites: https://lowerlevescreations.neocities.org/
 
 
-AI Design & Development Reminder Prompt
+## Hosting
+In the main directory, run this command
+  python -m http.server 8000
+then visit: http://localhost:8000/
+
+## AI Design & Development Reminder Prompt
 Use this prompt to remind the AI (or any collaborator) of the project’s vision, style, and requirements:
 Prompt:
 > Act as a lead web designer and front-end developer specializing in retro web aesthetics and user-friendly, easily extensible static sites for hobbyist communities.

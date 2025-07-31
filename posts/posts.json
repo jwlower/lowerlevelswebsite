@@ -1,20 +1,14 @@
 [
   {
-    "title": "Monster Tactics for MotW",
-    "date": "2024-06-10",
-    "excerpt": "Tips for running smarter monsters in your MotW games.",
-    "file": "2024-06-10-motw-monster-tactics.html"
+    "title": "Post One",
+    "date": "2025-07-31",
+    "excerpt": "This is a short summary.",
+    "file": "post1.html"
   },
   {
-    "title": "D&D 2024 House Rules",
-    "date": "2024-06-05",
-    "excerpt": "A look at some custom rules for D&D 2024 campaigns.",
-    "file": "2024-06-05-dd2024-house-rules.html"
-  },
-  {
-    "title": "Welcome to Lower Levels!",
-    "date": "2024-05-28",
-    "excerpt": "Check out resources for MotW and D&D 2024. More games coming soon!",
-    "file": "2024-05-28-welcome.html"
+    "title": "Post Two",
+    "date": "2025-07-30",
+    "excerpt": "Another summary here.",
+    "file": "post2.html"
   }
-] 
+]
