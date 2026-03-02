@@ -28,7 +28,8 @@ nav a {
     transition: background 0.2s, color 0.2s;
 }
 
-nav a:hover {
+nav a:hover,
+nav a.nav-active {
     color: #232323;
     background: #FFD600;
     border-color: #F8F8F2;

@@ -1,14 +1,9 @@
 [
   {
-    "title": "Post One",
-    "date": "2025-07-31",
-    "excerpt": "This is a short summary.",
-    "file": "post1.html"
-  },
-  {
-    "title": "Post Two",
-    "date": "2025-07-30",
-    "excerpt": "Another summary here.",
-    "file": "post2.html"
+    "title": "Dragon in the Gold Mine &mdash; Session 1",
+    "date": "2024-06-05",
+    "game": "dnd",
+    "excerpt": "House rules and session notes from our first run of Dragon in the Gold Mine.",
+    "file": "posts/2024-06-05-dd2024-house-rules.html"
   }
 ]

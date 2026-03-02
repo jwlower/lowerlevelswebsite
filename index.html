@@ -5,62 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lower Levels Tabletop Hub</title>
     <link rel="stylesheet" href="styles.css" />
+    <script src="scripts/template.js" defer></script>
+    <script src="scripts/main.js" defer></script>
 </head>
-<body>
-    <header>
-        <h1>Lower Levels Tabletop Hub</h1>
-        <nav>
-            <a href="./">Home</a>
-            <!--<a href="motw/index.html">Monster of the Week</a>-->
-            <a href="dnd/index.html">D&D 2024</a>
-            <!-- Add new game links here -->
-            <!-- Add Discord link here -->
-        </nav>
-    </header>
-    <main class="container">
-        
-        <aside class="left-column">
-            <h3>Explore</h3>
-            <nav>
-                <!--<a href="motw/index.html">Monster of the Week</a>-->
-                <a href="dnd/index.html">D&D 2024</a>
-                <!-- Add more resource/game links here -->
-            </nav>
-        </aside>
-        
-        <section class="center-column">
-            <h2>Latest Posts</h2>
-            <!-- Blog post feed will be dynamically inserted here -->
-            <div id="post-feed">
-                <!-- Example static post preview (remove when dynamic feed is implemented) -->
-                <!--
-                <div class="post-preview">
-                    <h4>Welcome to Lower Levels!</h4>
-                    <p class="post-date">2024-06-10</p>
-                    <p>Check out resources for MotW and D&D 2024. More games coming soon!</p>
-                    <a href="#">Read More</a>
-                </div>
-                -->
-            </div>
-            <!-- Insert comments section here (see instructions below) -->
-        </section>
-        <aside class="right-column">
-            <div class="sidebar-box">
-                <h3>Socials</h3>
-                <!-- Add Discord link here -->
-            </div>
-            <div class="sidebar-box">
-                <h3>Support</h3>
-                <!--<a href="#">Patreon</a>-->
-                <!-- Add more support links here -->
-            </div>
-        </aside>
-    </main>
-    <footer>
-        <!-- <h2>Community Discussion</h2> -->
-        <!-- Insert comments section here (see instructions below) -->
-    </footer>
-    <!-- Add a script to dynamically load blog posts here in the future -->
-    <script src="scripts/main.js"></script>
+<body data-game="home" data-base=".">
+    <div id="page-content">
+        <h2>Latest Posts</h2>
+        <div id="post-feed"></div>
+    </div>
 </body>
 </html>
