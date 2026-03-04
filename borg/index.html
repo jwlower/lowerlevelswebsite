@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Monster of the Week | Lower Levels</title>
+    <title>Borg-Likes | Lower Levels</title>
     <link rel="stylesheet" href="../styles.css" />
 </head>
 <body>
@@ -22,19 +22,22 @@
 
         <aside class="left-column">
             <div class="sidebar-box">
-                <h3>MotW Resources</h3>
-                <a href="https://www.evilhat.com/home/monster-of-the-week/"
-                   target="_blank" rel="noopener noreferrer">Official Site</a>
-                <!-- Add more resource links here -->
+                <h3>Pirate Borg</h3>
+                <a href="https://www.pirateborg.com/" target="_blank" rel="noopener noreferrer">Official Site</a>
+                <!-- Add more Pirate Borg links here -->
+            </div>
+            <div class="sidebar-box">
+                <h3>Orc Borg</h3>
+                <a href="https://neonpistache.itch.io/orcborg" target="_blank" rel="noopener noreferrer">Itch.io Page</a>
+                <!-- Add more Orc Borg links here -->
             </div>
         </aside>
 
         <section class="center-column">
-            <h2 class="section-heading">Monster of the Week</h2>
 
             <!-- ============================================================
-                 POSTS
-                 To add a post, open motw/posts.json and add an entry:
+                 PIRATE BORG POSTS
+                 To add a post, open borg/pirate-borg-posts.json and add:
                  {
                    "title": "My Document",
                    "description": "What this document is.",
@@ -43,7 +46,22 @@
                  }
                  Newest entry first.
                  ============================================================ -->
-            <div class="post-feed" data-json="posts.json"></div>
+            <h2 class="section-heading">Pirate Borg</h2>
+            <div class="post-feed" data-json="pirate-borg-posts.json"></div>
+
+            <!-- ============================================================
+                 ORC BORG POSTS
+                 To add a post, open borg/orc-borg-posts.json and add:
+                 {
+                   "title": "My Document",
+                   "description": "What this document is.",
+                   "link": "https://drive.google.com/...",
+                   "date": "YYYY-MM-DD"
+                 }
+                 Newest entry first.
+                 ============================================================ -->
+            <h2 class="section-heading" style="margin-top: 32px;">Orc Borg</h2>
+            <div class="post-feed" data-json="orc-borg-posts.json"></div>
 
         </section>
 

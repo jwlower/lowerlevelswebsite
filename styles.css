@@ -231,3 +231,151 @@ footer {
     margin-bottom: 16px;
     line-height: 1.6;
 }
+
+/* Hub Cards (main page sub-page navigation) */
+.hub-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 40px;
+}
+
+.hub-card {
+    display: block;
+    background: #232323;
+    border: 2px solid #2B7FFF;
+    padding: 16px 20px;
+    text-decoration: none;
+    color: #F8F8F2;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.hub-card:hover {
+    border-color: #FFD600;
+    background: #1e1e1e;
+}
+
+.hub-card h3 {
+    color: #FFD600;
+    margin: 0 0 8px 0;
+    font-size: 0.85em;
+}
+
+.hub-card p {
+    color: #F8F8F2;
+    margin: 0;
+    font-size: 0.7em;
+    line-height: 1.7;
+    opacity: 0.85;
+}
+
+/* Section divider headings */
+.section-heading {
+    color: #2B7FFF;
+    font-size: 0.85em;
+    border-bottom: 2px solid #2B7FFF;
+    padding-bottom: 8px;
+    margin: 0 0 20px 0;
+}
+
+/* Inline Blog Articles (main page) */
+.blog-article {
+    border: 2px solid #FFD600;
+    background: #232323;
+    margin-bottom: 32px;
+    padding: 20px 24px;
+}
+
+.blog-article h3 {
+    color: #FFD600;
+    margin: 0 0 8px 0;
+    font-size: 0.85em;
+}
+
+.blog-article .post-date {
+    color: #F8F8F2;
+    font-size: 0.65em;
+    margin-bottom: 16px;
+    opacity: 0.65;
+    display: block;
+}
+
+.blog-article p {
+    color: #F8F8F2;
+    line-height: 1.9;
+    margin-bottom: 12px;
+    font-size: 0.72em;
+}
+
+.blog-article p:last-child {
+    margin-bottom: 0;
+}
+
+/* Document Post Cards (sub-page JSON feed) */
+.doc-post {
+    border: 2px solid #2B7FFF;
+    background: #232323;
+    margin-bottom: 20px;
+    padding: 16px 20px;
+}
+
+.doc-post h4 {
+    color: #FFD600;
+    margin: 0 0 6px 0;
+    font-size: 0.8em;
+}
+
+.doc-post .post-date {
+    color: #F8F8F2;
+    font-size: 0.62em;
+    opacity: 0.6;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.doc-post p {
+    color: #F8F8F2;
+    margin: 0 0 14px 0;
+    font-size: 0.72em;
+    line-height: 1.7;
+}
+
+.doc-post a.doc-link {
+    color: #2B7FFF;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 0.72em;
+    border: 1px solid #2B7FFF;
+    padding: 4px 10px;
+    display: inline-block;
+    transition: background 0.2s, color 0.2s;
+}
+
+.doc-post a.doc-link:hover {
+    background: #2B7FFF;
+    color: #181818;
+}
+
+.no-posts {
+    color: #F8F8F2;
+    opacity: 0.5;
+    font-size: 0.72em;
+}
+
+/* Google Drive / doc link button used inside blog post body */
+a.post-doc-link {
+    display: inline-block;
+    color: #FFD600;
+    background: #232323;
+    border: 2px solid #FFD600;
+    padding: 8px 16px;
+    text-decoration: none;
+    font-size: 0.72em;
+    margin: 12px 0;
+    transition: background 0.2s, color 0.2s;
+}
+
+a.post-doc-link:hover {
+    background: #FFD600;
+    color: #181818;
+}

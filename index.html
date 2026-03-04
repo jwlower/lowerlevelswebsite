@@ -11,56 +11,85 @@
         <h1>Lower Levels Tabletop Hub</h1>
         <nav>
             <a href="./">Home</a>
-            <!--<a href="motw/index.html">Monster of the Week</a>-->
-            <a href="dnd/index.html">D&D 2024</a>
-            <!-- Add new game links here -->
+            <a href="dnd/">D&amp;D 2024</a>
+            <a href="motw/">Monster of the Week</a>
+            <a href="borg/">Borg-Likes</a>
             <!-- Add Discord link here -->
         </nav>
     </header>
+
     <main class="container">
-        
+
         <aside class="left-column">
-            <h3>Explore</h3>
-            <nav>
-                <!--<a href="motw/index.html">Monster of the Week</a>-->
-                <a href="dnd/index.html">D&D 2024</a>
-                <!-- Add more resource/game links here -->
-            </nav>
-        </aside>
-        
-        <section class="center-column">
-            <h2>Latest Posts</h2>
-            <!-- Blog post feed will be dynamically inserted here -->
-            <div id="post-feed">
-                <!-- Example static post preview (remove when dynamic feed is implemented) -->
-                <!--
-                <div class="post-preview">
-                    <h4>Welcome to Lower Levels!</h4>
-                    <p class="post-date">2024-06-10</p>
-                    <p>Check out resources for MotW and D&D 2024. More games coming soon!</p>
-                    <a href="#">Read More</a>
-                </div>
-                -->
+            <div class="sidebar-box">
+                <h3>Explore</h3>
+                <a href="dnd/">D&amp;D 2024</a>
+                <a href="motw/">Monster of the Week</a>
+                <a href="borg/">Borg-Likes</a>
             </div>
-            <!-- Insert comments section here (see instructions below) -->
+            <!-- Add more sidebar boxes here -->
+        </aside>
+
+        <section class="center-column">
+
+            <!-- ============================================================
+                 GAME PAGES
+                 Add a new hub-card block for each new TTRPG sub-page.
+                 ============================================================ -->
+            <h2 class="section-heading">Games</h2>
+            <div class="hub-cards">
+                <a href="dnd/" class="hub-card">
+                    <h3>D&amp;D 2024</h3>
+                    <p>One-shots, house rules, and resources for Dungeons &amp; Dragons 2024.</p>
+                </a>
+                <a href="motw/" class="hub-card">
+                    <h3>Monster of the Week</h3>
+                    <p>Mysteries, playbooks, and resources for Monster of the Week.</p>
+                </a>
+                <a href="borg/" class="hub-card">
+                    <h3>Borg-Likes</h3>
+                    <p>Content for Pirate Borg, Orc Borg, and the Borg-like family of games.</p>
+                </a>
+            </div>
+
+            <!-- ============================================================
+                 BLOG POSTS
+                 To add a new post:
+                 1. Copy posts/template.html → posts/your-post-title.html
+                 2. Write your content in that new file
+                 3. Add one entry to posts/posts.json (newest first):
+                    {
+                      "title": "Your Title",
+                      "date": "YYYY-MM-DD",
+                      "excerpt": "One sentence teaser.",
+                      "file": "posts/your-post-title.html"
+                    }
+                 The feed below updates automatically.
+                 ============================================================ -->
+            <h2 class="section-heading">Blog</h2>
+            <div class="post-feed" data-json="posts/posts.json"></div>
+
         </section>
+
         <aside class="right-column">
             <div class="sidebar-box">
                 <h3>Socials</h3>
                 <!-- Add Discord link here -->
+                <p class="no-posts">Coming soon.</p>
             </div>
             <div class="sidebar-box">
                 <h3>Support</h3>
-                <!--<a href="#">Patreon</a>-->
-                <!-- Add more support links here -->
+                <!-- Add Patreon link here -->
+                <p class="no-posts">Coming soon.</p>
             </div>
         </aside>
+
     </main>
+
     <footer>
-        <!-- <h2>Community Discussion</h2> -->
-        <!-- Insert comments section here (see instructions below) -->
+        &copy; 2026 Jacob Lower &mdash; Lower Levels Tabletop Hub
     </footer>
-    <!-- Add a script to dynamically load blog posts here in the future -->
-    <script src="scripts/main.js"></script>
+
+    <script src="scripts/posts.js"></script>
 </body>
 </html>

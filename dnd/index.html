@@ -3,83 +3,85 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>D&D 2024 Resources</title>
+    <title>D&amp;D 2024 | Lower Levels</title>
     <link rel="stylesheet" href="../styles.css" />
 </head>
 <body>
     <header>
         <h1>Lower Levels Tabletop Hub</h1>
         <nav>
-            <a href="../index.html">Home</a>
-            <!--<a href="../motw/index.html">Monster of the Week</a>-->
-            <a href="../dnd/index.html">D&D 2024</a>
-            <!-- Add new game links here -->
+            <a href="../">Home</a>
+            <a href="../dnd/">D&amp;D 2024</a>
+            <a href="../motw/">Monster of the Week</a>
+            <a href="../borg/">Borg-Likes</a>
             <!-- Add Discord link here -->
         </nav>
     </header>
+
     <main class="container">
+
         <aside class="left-column">
-            <h3>D&D Resources</h3>
-            <nav>
-                <a href="https://www.dndbeyond.com/posts/1804-start-playing-today-with-the-2024-d-d-free-rules" target="_blank" rel="noopener noreferrer">
-                    2024 Free Rules (Official)
-                </a>
-
-                <a href="https://www.dndbeyond.com/srd" target="_blank" rel="noopener">
-                    SRD v5.2.1 (Official Reference)
-                </a>
-
-                <!-- Optional -->
-                <a href="https://roll20.net/compendium/dnd5e/Free%20Basic%20Rules%20%282024%29" target="_blank" rel="noopener noreferrer">
-                    Free Basic Rules (Roll20)
-                </a>
-
-                <a href="character-creator.html">Character Creator WIP!!</a>
-            </nav>
+            <div class="sidebar-box">
+                <h3>D&amp;D Resources</h3>
+                <a href="https://www.dndbeyond.com/posts/1804-start-playing-today-with-the-2024-d-d-free-rules"
+                   target="_blank" rel="noopener noreferrer">2024 Free Rules (Official)</a>
+                <a href="https://www.dndbeyond.com/srd"
+                   target="_blank" rel="noopener noreferrer">SRD v5.2.1 (Official)</a>
+                <a href="https://roll20.net/compendium/dnd5e/Free%20Basic%20Rules%20%282024%29"
+                   target="_blank" rel="noopener noreferrer">Free Basic Rules (Roll20)</a>
+                <a href="character-creator.html">Character Creator (WIP)</a>
+            </div>
+            <!-- Add more sidebar boxes here -->
         </aside>
+
         <section class="center-column">
-            <h2>Dungeons & Dragons 2024</h2>
-            <!-- Add D&D main content here -->
-            <div class="pdf-link">
-                <a href="https://docs.google.com/document/d/1JHac81ZyYNa159ZM2ryceMW-M2kE9bY6cCpgvz2CNKU/edit?usp=sharing" target="_blank">Dragon in the Gold Mine 1st Level One-Shot</a> 
-            </div>
-                
-                <!--https://docs.google.com/document/d/1JHac81ZyYNa159ZM2ryceMW-M2kE9bY6cCpgvz2CNKU/edit?usp=sharing-->
-            
-            <div class="pdf-link">
-                <a href="#" target="_blank">More Content Coming Soon!</a>
-            </div>
-            <!-- Insert comments section here (see instructions below) -->
+            <h2 class="section-heading">Dungeons &amp; Dragons 2024</h2>
+
+            <!-- ============================================================
+                 POSTS
+                 To add a post, open dnd/posts.json and add an entry:
+                 {
+                   "title": "My Document",
+                   "description": "What this document is.",
+                   "link": "https://drive.google.com/...",
+                   "date": "YYYY-MM-DD"
+                 }
+                 Newest entry first.
+                 ============================================================ -->
+            <div class="post-feed" data-json="posts.json"></div>
+
         </section>
+
         <aside class="right-column">
             <div class="sidebar-box">
                 <h3>Socials</h3>
                 <!-- Add Discord link here -->
+                <p class="no-posts">Coming soon.</p>
             </div>
             <div class="sidebar-box">
                 <h3>Support</h3>
-                <!--<a href="#">Patreon</a>-->
-                <!-- Add more support links here -->
+                <!-- Add Patreon link here -->
+                <p class="no-posts">Coming soon.</p>
             </div>
         </aside>
+
     </main>
+
     <footer>
-        <h2>Community Discussion</h2>
-        <!-- Insert comments section here (see instructions below) -->
+        &copy; 2026 Jacob Lower &mdash; Lower Levels Tabletop Hub
     </footer>
+
     <div class="legal-footer">
-        <p><strong>Unofficial Fan Content:</strong> This site is unofficial fan content and is not affiliated with, endorsed, sponsored, or specifically approved by Wizards of the Coast.</p>
-
-        <p><strong>SRD Attribution (CC BY 4.0):</strong>
-            This work includes material from the System Reference Document 5.2.1 (“SRD 5.2.1”) by Wizards of the Coast LLC, available at
-            <a href="https://www.dndbeyond.com/srd" target="_blank" rel="noopener noreferrer">https://www.dndbeyond.com/srd</a>.
-            The SRD 5.2.1 is licensed under the Creative Commons Attribution 4.0 International License, available at
-            <a href="https://creativecommons.org/licenses/by/4.0/legalcode" target="_blank" rel="noopener noreferrer">https://creativecommons.org/licenses/by/4.0/legalcode</a>.
-        </p>
-
+        <p><strong>Unofficial Fan Content:</strong> This site is unofficial fan content and is not affiliated with,
+        endorsed, sponsored, or specifically approved by Wizards of the Coast.</p>
+        <p><strong>SRD Attribution (CC BY 4.0):</strong> This work includes material from the System Reference Document
+        5.2.1 ("SRD 5.2.1") by Wizards of the Coast LLC, available at
+        <a href="https://www.dndbeyond.com/srd" target="_blank" rel="noopener noreferrer">dndbeyond.com/srd</a>.
+        Licensed under <a href="https://creativecommons.org/licenses/by/4.0/legalcode" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.</p>
         <p><strong>Trademarks:</strong> Dungeons &amp; Dragons and Wizards of the Coast are trademarks of Wizards of the Coast LLC.</p>
-
-        <p><strong>Copyright:</strong> © 2024–2026 Jacob Lower. All rights reserved for original setting text, maps, layout, and artwork (if any).</p>
+        <p><strong>Copyright:</strong> &copy; 2024&ndash;2026 Jacob Lower. All rights reserved for original content.</p>
     </div>
+
+    <script src="../scripts/posts.js"></script>
 </body>
 </html>

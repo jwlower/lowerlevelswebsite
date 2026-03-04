@@ -1,14 +1,8 @@
 [
   {
-    "title": "Post One",
-    "date": "2025-07-31",
-    "excerpt": "This is a short summary.",
-    "file": "post1.html"
-  },
-  {
-    "title": "Post Two",
-    "date": "2025-07-30",
-    "excerpt": "Another summary here.",
-    "file": "post2.html"
+    "title": "Welcome to Lower Levels!",
+    "date": "2026-03-03",
+    "excerpt": "An intro to what this site is, what games I cover, and what's coming.",
+    "file": "posts/welcome-to-lower-levels.html"
   }
 ]
