@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Blog — Lower Levels Tabletop Hub</title>
+    <link rel="stylesheet" href="../styles.css" />
+</head>
+<body>
+    <header>
+        <h1>Lower Levels Tabletop Hub</h1>
+        <nav>
+            <a href="../">Home</a>
+            <a href="../dnd/">D&amp;D 2024</a>
+            <a href="../motw/">Monster of the Week</a>
+            <a href="../borg/">Borg-Likes</a>
+            <a href="../resources/">Resources</a>
+            <a href="../blog/">Blog</a>
+            <a href="../recommended/">Recommended</a>
+        </nav>
+    </header>
+
+    <main class="container">
+
+        <aside class="left-column">
+            <div class="sidebar-box">
+                <h3>Explore</h3>
+                <a href="../dnd/">D&amp;D 2024</a>
+                <a href="../motw/">Monster of the Week</a>
+                <a href="../borg/">Borg-Likes</a>
+                <a href="../resources/">Resources</a>
+                <a href="../blog/">Blog</a>
+                <a href="../recommended/">Recommended</a>
+            </div>
+        </aside>
+
+        <section class="center-column">
+
+            <h2 class="section-heading">Blog</h2>
+            <p style="font-size:0.7em; color:#F8F8F2; opacity:0.7; margin-bottom:20px; line-height:1.8;">
+                Session write-ups, rules discussion, con reports, and hobby ramblings. Newest first.
+            </p>
+
+            <!-- Tag filter buttons — built dynamically from post tags -->
+            <div class="tag-filters" id="tag-filters"></div>
+
+            <!-- Post list — populated by the script below -->
+            <div id="blog-feed"></div>
+
+        </section>
+
+        <aside class="right-column">
+            <div class="sidebar-box">
+                <h3>Socials</h3>
+                <!-- Add Discord link here -->
+                <p class="no-posts">Coming soon.</p>
+            </div>
+            <div class="sidebar-box">
+                <h3>Support</h3>
+                <!-- Add Patreon link here -->
+                <p class="no-posts">Coming soon.</p>
+            </div>
+        </aside>
+
+    </main>
+
+    <footer>
+        &copy; 2026 Jacob Lower &mdash; Lower Levels Tabletop Hub
+    </footer>
+
+    <script>
+        // ----------------------------------------------------------------
+        // Blog archive with tag filtering.
+        // Reads from posts/posts.json (one level up).
+        // Blog post links go to ../post.html?p=slug.
+        // ----------------------------------------------------------------
+        document.addEventListener('DOMContentLoaded', function () {
+            var feed        = document.getElementById('blog-feed');
+            var filterBar   = document.getElementById('tag-filters');
+            var activeTag   = 'all';
+            var allPostDivs = [];
+
+            fetch('../posts/posts.json')
+                .then(function (r) {
+                    if (!r.ok) throw new Error('Not found');
+                    return r.json();
+                })
+                .then(function (posts) {
+                    if (!posts.length) {
+                        feed.innerHTML = '<p class="no-posts">No posts yet. Check back soon!</p>';
+                        return;
+                    }
+
+                    // Collect all unique tags across all posts
+                    var tagSet = {};
+                    posts.forEach(function (post) {
+                        (post.tags || []).forEach(function (t) { tagSet[t] = true; });
+                    });
+                    var allTags = Object.keys(tagSet).sort();
+
+                    // Build filter buttons
+                    function buildFilters() {
+                        filterBar.innerHTML = '';
+                        var allBtn = document.createElement('button');
+                        allBtn.className = 'tag-filter' + (activeTag === 'all' ? ' active' : '');
+                        allBtn.textContent = 'All';
+                        allBtn.addEventListener('click', function () { setFilter('all'); });
+                        filterBar.appendChild(allBtn);
+
+                        allTags.forEach(function (tag) {
+                            var btn = document.createElement('button');
+                            btn.className = 'tag-filter' + (activeTag === tag ? ' active' : '');
+                            btn.textContent = tag;
+                            btn.addEventListener('click', function () { setFilter(tag); });
+                            filterBar.appendChild(btn);
+                        });
+                    }
+
+                    // Show/hide posts based on active tag
+                    function setFilter(tag) {
+                        activeTag = tag;
+                        buildFilters();
+                        allPostDivs.forEach(function (item) {
+                            if (tag === 'all') {
+                                item.div.style.display = '';
+                            } else {
+                                var tags = item.tags;
+                                item.div.style.display = tags.indexOf(tag) !== -1 ? '' : 'none';
+                            }
+                        });
+                    }
+
+                    // Render posts
+                    posts.forEach(function (post) {
+                        var div = document.createElement('div');
+                        div.className = 'doc-post';
+
+                        var sessionBadge = post.type === 'session'
+                            ? '<span class="session-badge">Session Report</span><br>'
+                            : '';
+
+                        var sessionMeta = '';
+                        if (post.type === 'session') {
+                            var parts = [];
+                            if (post.system)   parts.push('<span>System: ' + post.system + '</span>');
+                            if (post.players)  parts.push('<span>Players: ' + post.players + '</span>');
+                            if (post.duration) parts.push('<span>Duration: ' + post.duration + '</span>');
+                            if (parts.length) {
+                                sessionMeta = '<div class="session-meta">' + parts.join('') + '</div>';
+                            }
+                        }
+
+                        var tags = post.tags && post.tags.length ? post.tags : [];
+                        var tagsHtml = tags.length
+                            ? '<div class="post-tags">'
+                              + tags.map(function (t) {
+                                  return '<span class="tag-pill">' + t + '</span>';
+                              }).join('')
+                              + '</div>'
+                            : '';
+
+                        div.innerHTML =
+                            sessionBadge
+                            + '<h4>' + post.title + '</h4>'
+                            + '<span class="post-date">' + post.date + '</span>'
+                            + tagsHtml
+                            + sessionMeta
+                            + '<p>' + post.excerpt + '</p>'
+                            + '<a class="doc-link" href="../post.html?p=' + post.slug + '">Read Post &rarr;</a>';
+
+                        feed.appendChild(div);
+                        allPostDivs.push({ div: div, tags: tags });
+                    });
+
+                    if (allTags.length) buildFilters();
+                })
+                .catch(function () {
+                    feed.innerHTML = '<p class="no-posts">Could not load posts.</p>';
+                });
+        });
+    </script>
+</body>
+</html>

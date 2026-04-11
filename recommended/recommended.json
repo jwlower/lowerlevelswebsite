@@ -1,0 +1,58 @@
+[
+  {
+    "title": "Monster of the Week SRD",
+    "url": "https://www.evilhat.com/home/monster-of-the-week/",
+    "description": "The official Evil Hat page for MotW. Links to the SRD, official playbooks, and where to buy the full book.",
+    "category": "official",
+    "system": "motw"
+  },
+  {
+    "title": "D&D 2024 Free Rules",
+    "url": "https://www.dndbeyond.com/posts/1804-start-playing-today-with-the-2024-d-d-free-rules",
+    "description": "The official free ruleset for D&D 2024. Everything you need to start playing without spending a dime.",
+    "category": "official",
+    "system": "dnd"
+  },
+  {
+    "title": "D&D 2024 SRD (CC BY 4.0)",
+    "url": "https://www.dndbeyond.com/srd",
+    "description": "The full System Reference Document for D&D 2024, freely available under Creative Commons. Great for homebrewers.",
+    "category": "official",
+    "system": "dnd"
+  },
+  {
+    "title": "Pirate Borg Official Site",
+    "url": "https://www.pirateborg.com/",
+    "description": "The official home of Pirate Borg. Rules, supplements, and community content for the grimy pirate OSR game.",
+    "category": "official",
+    "system": "borg"
+  },
+  {
+    "title": "Orc Borg (itch.io)",
+    "url": "https://neonpistache.itch.io/orcborg",
+    "description": "Orc Borg by Neon Pistache. A Mork Borg hack where you play as orcs. Cheap, weird, and very fun.",
+    "category": "official",
+    "system": "borg"
+  },
+  {
+    "title": "Itch.io TTRPG Section",
+    "url": "https://itch.io/tabletop-role-playing",
+    "description": "The best place to find indie TTRPGs, many free or pay-what-you-want. Endlessly deep rabbit hole.",
+    "category": "tools",
+    "system": "general"
+  },
+  {
+    "title": "Roll20",
+    "url": "https://roll20.net/",
+    "description": "Free browser-based virtual tabletop. Good for running games online — built-in dice, maps, character sheets.",
+    "category": "tools",
+    "system": "general"
+  },
+  {
+    "title": "Owlbear Rodeo",
+    "url": "https://www.owlbear.rodeo/",
+    "description": "Minimal, fast virtual tabletop. No account needed for players. Great for one-shots where you just need a map.",
+    "category": "tools",
+    "system": "general"
+  }
+]

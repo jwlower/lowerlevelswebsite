@@ -14,7 +14,9 @@
             <a href="dnd/">D&amp;D 2024</a>
             <a href="motw/">Monster of the Week</a>
             <a href="borg/">Borg-Likes</a>
-            <!-- Add Discord link here -->
+            <a href="resources/">Resources</a>
+            <a href="blog/">Blog</a>
+            <a href="recommended/">Recommended</a>
         </nav>
     </header>
 
@@ -26,11 +28,34 @@
                 <a href="dnd/">D&amp;D 2024</a>
                 <a href="motw/">Monster of the Week</a>
                 <a href="borg/">Borg-Likes</a>
+                <a href="resources/">Resources</a>
+                <a href="blog/">Blog</a>
+                <a href="recommended/">Recommended</a>
             </div>
-            <!-- Add more sidebar boxes here -->
         </aside>
 
         <section class="center-column">
+
+            <!-- ============================================================
+                 ABOUT
+                 ============================================================ -->
+            <div class="about-blurb">
+                <p>Welcome to Lower Levels — a free, no-gatekeeping hub for tabletop RPG content. One-shots, mysteries, house rules, and resources across multiple systems, all available to grab and play.</p>
+                <p>Whether you're a veteran GM or sitting down at your first session, everything here is meant to be used. Check the game pages for system-specific docs, the Resources page for general guides, and the Blog for session write-ups and hobby rambling.</p>
+            </div>
+
+            <!-- ============================================================
+                 ANNOUNCEMENTS
+                 To add an announcement, add an entry to announcements.json:
+                 {
+                   "title": "Event Name",
+                   "date": "YYYY-MM-DD",
+                   "body": "Short description of the event or news.",
+                   "link": "https://optional-rsvp-or-details-url"
+                 }
+                 ============================================================ -->
+            <h2 class="section-heading">Announcements</h2>
+            <div class="post-feed" data-json="announcements.json"></div>
 
             <!-- ============================================================
                  GAME PAGES

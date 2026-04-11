@@ -3,6 +3,8 @@
     "title": "Welcome to Lower Levels!",
     "date": "2026-03-03",
     "excerpt": "An intro to what this site is, what games I cover, and what's coming.",
-    "file": "posts/welcome-to-lower-levels.html"
+    "slug": "2026-03-03-welcome-to-lower-levels",
+    "tags": ["general"],
+    "type": "blog"
   }
 ]

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Resources — Lower Levels Tabletop Hub</title>
+    <link rel="stylesheet" href="../styles.css" />
+</head>
+<body>
+    <header>
+        <h1>Lower Levels Tabletop Hub</h1>
+        <nav>
+            <a href="../">Home</a>
+            <a href="../dnd/">D&amp;D 2024</a>
+            <a href="../motw/">Monster of the Week</a>
+            <a href="../borg/">Borg-Likes</a>
+            <a href="../resources/">Resources</a>
+            <a href="../blog/">Blog</a>
+            <a href="../recommended/">Recommended</a>
+        </nav>
+    </header>
+
+    <main class="container">
+
+        <aside class="left-column">
+            <div class="sidebar-box">
+                <h3>Explore</h3>
+                <a href="../dnd/">D&amp;D 2024</a>
+                <a href="../motw/">Monster of the Week</a>
+                <a href="../borg/">Borg-Likes</a>
+                <a href="../resources/">Resources</a>
+                <a href="../blog/">Blog</a>
+                <a href="../recommended/">Recommended</a>
+            </div>
+        </aside>
+
+        <section class="center-column">
+
+            <h2 class="section-heading">Resources</h2>
+            <p style="font-size:0.7em; color:#F8F8F2; opacity:0.7; margin-bottom:20px; line-height:1.8;">
+                One-shots, guides, handouts, and reference docs — all free, all shareable. Links open in Google Drive or wherever the doc lives.
+            </p>
+
+            <!-- Category filter buttons — built dynamically -->
+            <div class="tag-filters" id="category-filters"></div>
+
+            <!-- Resource cards — populated by the script below -->
+            <div id="resource-feed"></div>
+
+        </section>
+
+        <aside class="right-column">
+            <div class="sidebar-box">
+                <h3>Socials</h3>
+                <!-- Add Discord link here -->
+                <p class="no-posts">Coming soon.</p>
+            </div>
+            <div class="sidebar-box">
+                <h3>Support</h3>
+                <!-- Add Patreon link here -->
+                <p class="no-posts">Coming soon.</p>
+            </div>
+        </aside>
+
+    </main>
+
+    <footer>
+        &copy; 2026 Jacob Lower &mdash; Lower Levels Tabletop Hub
+    </footer>
+
+    <script>
+        // ----------------------------------------------------------------
+        // Resources page with category filtering.
+        // Reads from resources/resources.json (same folder).
+        //
+        // To add a resource, add an entry to resources.json:
+        // {
+        //   "title": "Document Title",
+        //   "date": "YYYY-MM-DD",
+        //   "description": "Short blurb about what it is.",
+        //   "link": "https://docs.google.com/...",
+        //   "category": "dnd"    ← optional: dnd, motw, borg, general
+        // }
+        // ----------------------------------------------------------------
+        var CATEGORY_LABELS = {
+            'dnd':     'D&D 2024',
+            'motw':    'Monster of the Week',
+            'borg':    'Borg-Likes',
+            'general': 'General'
+        };
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var feed       = document.getElementById('resource-feed');
+            var filterBar  = document.getElementById('category-filters');
+            var activeTag  = 'all';
+            var allItems   = [];
+
+            fetch('resources.json')
+                .then(function (r) {
+                    if (!r.ok) throw new Error('Not found');
+                    return r.json();
+                })
+                .then(function (resources) {
+                    if (!resources.length) {
+                        feed.innerHTML = '<p class="no-posts">No resources yet. Check back soon!</p>';
+                        return;
+                    }
+
+                    // Collect unique categories
+                    var catSet = {};
+                    resources.forEach(function (res) {
+                        if (res.category) catSet[res.category] = true;
+                    });
+                    var allCats = Object.keys(catSet).sort();
+
+                    function buildFilters() {
+                        filterBar.innerHTML = '';
+                        var allBtn = document.createElement('button');
+                        allBtn.className = 'tag-filter' + (activeTag === 'all' ? ' active' : '');
+                        allBtn.textContent = 'All';
+                        allBtn.addEventListener('click', function () { setFilter('all'); });
+                        filterBar.appendChild(allBtn);
+
+                        allCats.forEach(function (cat) {
+                            var btn = document.createElement('button');
+                            btn.className = 'tag-filter' + (activeTag === cat ? ' active' : '');
+                            btn.textContent = CATEGORY_LABELS[cat] || cat;
+                            btn.addEventListener('click', function () { setFilter(cat); });
+                            filterBar.appendChild(btn);
+                        });
+                    }
+
+                    function setFilter(cat) {
+                        activeTag = cat;
+                        buildFilters();
+                        allItems.forEach(function (item) {
+                            item.div.style.display =
+                                (cat === 'all' || item.category === cat) ? '' : 'none';
+                        });
+                    }
+
+                    // Render resource cards
+                    resources.forEach(function (res) {
+                        var div = document.createElement('div');
+                        div.className = 'doc-post';
+
+                        var categoryHtml = res.category
+                            ? '<span class="resource-category-label">'
+                              + (CATEGORY_LABELS[res.category] || res.category)
+                              + '</span>'
+                            : '';
+
+                        div.innerHTML =
+                            categoryHtml
+                            + '<h4>' + res.title + '</h4>'
+                            + '<span class="post-date">' + res.date + '</span>'
+                            + '<p>' + res.description + '</p>'
+                            + '<a class="doc-link" href="' + res.link
+                            + '" target="_blank" rel="noopener noreferrer">View Document &rarr;</a>';
+
+                        feed.appendChild(div);
+                        allItems.push({ div: div, category: res.category || '' });
+                    });
+
+                    if (allCats.length) buildFilters();
+                })
+                .catch(function () {
+                    feed.innerHTML = '<p class="no-posts">Could not load resources.</p>';
+                });
+        });
+    </script>
+</body>
+</html>

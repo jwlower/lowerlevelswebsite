@@ -362,6 +362,239 @@ footer {
     font-size: 0.72em;
 }
 
+/* Announcement Post Cards (homepage feed) */
+.announcement-post {
+    border: 2px solid #FFD600;
+    border-left: 6px solid #FFD600;
+    background: #1a1a0e;
+    margin-bottom: 20px;
+    padding: 16px 20px;
+}
+
+.announcement-post h4 {
+    color: #FFD600;
+    margin: 0 0 6px 0;
+    font-size: 0.8em;
+}
+
+.announcement-post .post-date {
+    color: #F8F8F2;
+    font-size: 0.62em;
+    opacity: 0.6;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.announcement-post p {
+    color: #F8F8F2;
+    margin: 0 0 14px 0;
+    font-size: 0.72em;
+    line-height: 1.7;
+}
+
+.announcement-post p:last-child {
+    margin-bottom: 0;
+}
+
+.announcement-post a.doc-link {
+    color: #FFD600;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 0.72em;
+    border: 1px solid #FFD600;
+    padding: 4px 10px;
+    display: inline-block;
+    transition: background 0.2s, color 0.2s;
+}
+
+.announcement-post a.doc-link:hover {
+    background: #FFD600;
+    color: #181818;
+}
+
+/* Resource category label pill */
+.resource-category-label {
+    display: inline-block;
+    font-size: 0.6em;
+    padding: 2px 8px;
+    border: 1px solid #2B7FFF;
+    color: #2B7FFF;
+    background: #181818;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* About blurb on homepage */
+.about-blurb {
+    border: 2px solid #FFD600;
+    background: #232323;
+    padding: 20px 24px;
+    margin-bottom: 32px;
+    font-size: 0.72em;
+    line-height: 1.9;
+    color: #F8F8F2;
+}
+
+.about-blurb p {
+    margin: 0 0 12px 0;
+}
+
+.about-blurb p:last-child {
+    margin-bottom: 0;
+}
+
+/* Tag pills — small labels on post cards and post pages */
+.post-tags {
+    margin-bottom: 10px;
+}
+
+.tag-pill {
+    display: inline-block;
+    font-size: 0.55em;
+    padding: 2px 7px;
+    border: 1px solid #2B7FFF;
+    color: #2B7FFF;
+    background: #181818;
+    margin-right: 4px;
+    text-transform: lowercase;
+    letter-spacing: 0.03em;
+}
+
+/* Tag filter buttons — above the blog/resource listings */
+.tag-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+.tag-filter {
+    font-family: 'Press Start 2P', Courier, monospace;
+    font-size: 0.6em;
+    padding: 4px 10px;
+    border: 1px solid #2B7FFF;
+    color: #2B7FFF;
+    background: #181818;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.tag-filter:hover,
+.tag-filter.active {
+    background: #2B7FFF;
+    color: #181818;
+}
+
+/* Session report badge — appears on session-type post cards */
+.session-badge {
+    display: inline-block;
+    font-size: 0.55em;
+    padding: 2px 8px;
+    border: 1px solid #FFD600;
+    color: #FFD600;
+    background: #181818;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Session meta info row (system / players / duration) */
+.session-meta {
+    font-size: 0.6em;
+    color: #F8F8F2;
+    opacity: 0.65;
+    margin-bottom: 10px;
+    line-height: 1.8;
+}
+
+.session-meta span {
+    margin-right: 14px;
+}
+
+/* Rendered markdown post body (post.html) */
+.post-body {
+    font-size: 0.75em;
+    line-height: 2;
+    color: #F8F8F2;
+}
+
+.post-body h2 {
+    color: #FFD600;
+    margin: 32px 0 12px 0;
+    font-size: 1em;
+}
+
+.post-body h3 {
+    color: #2B7FFF;
+    margin: 24px 0 10px 0;
+    font-size: 0.9em;
+}
+
+.post-body p {
+    margin-bottom: 16px;
+}
+
+.post-body a {
+    color: #2B7FFF;
+    text-decoration: underline;
+}
+
+.post-body a:hover {
+    color: #FFD600;
+}
+
+.post-body ul,
+.post-body ol {
+    margin: 0 0 16px 1.5em;
+    padding: 0;
+}
+
+.post-body li {
+    margin-bottom: 6px;
+}
+
+.post-body blockquote {
+    border-left: 4px solid #FFD600;
+    margin: 16px 0;
+    padding: 8px 16px;
+    background: #232323;
+    color: #F8F8F2;
+    opacity: 0.85;
+}
+
+.post-body code {
+    background: #232323;
+    padding: 1px 5px;
+    font-family: Courier, monospace;
+    font-size: 0.95em;
+}
+
+.post-body hr {
+    border: none;
+    border-top: 2px solid #2B7FFF;
+    margin: 24px 0;
+}
+
+/* Post page header (title + date + tags on a rendered markdown post) */
+.post-header {
+    margin-bottom: 28px;
+}
+
+.post-header h2 {
+    color: #FFD600;
+    margin: 0 0 8px 0;
+    font-size: 0.9em;
+}
+
+.post-header .post-date {
+    color: #F8F8F2;
+    font-size: 0.65em;
+    opacity: 0.65;
+    display: block;
+    margin-bottom: 10px;
+}
+
 /* Google Drive / doc link button used inside blog post body */
 a.post-doc-link {
     display: inline-block;

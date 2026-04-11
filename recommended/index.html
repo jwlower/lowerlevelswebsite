@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Recommended — Lower Levels Tabletop Hub</title>
+    <link rel="stylesheet" href="../styles.css" />
+</head>
+<body>
+    <header>
+        <h1>Lower Levels Tabletop Hub</h1>
+        <nav>
+            <a href="../">Home</a>
+            <a href="../dnd/">D&amp;D 2024</a>
+            <a href="../motw/">Monster of the Week</a>
+            <a href="../borg/">Borg-Likes</a>
+            <a href="../resources/">Resources</a>
+            <a href="../blog/">Blog</a>
+            <a href="../recommended/">Recommended</a>
+        </nav>
+    </header>
+
+    <main class="container">
+
+        <aside class="left-column">
+            <div class="sidebar-box">
+                <h3>Explore</h3>
+                <a href="../dnd/">D&amp;D 2024</a>
+                <a href="../motw/">Monster of the Week</a>
+                <a href="../borg/">Borg-Likes</a>
+                <a href="../resources/">Resources</a>
+                <a href="../blog/">Blog</a>
+                <a href="../recommended/">Recommended</a>
+            </div>
+        </aside>
+
+        <section class="center-column">
+
+            <h2 class="section-heading">Recommended</h2>
+            <p style="font-size:0.7em; color:#F8F8F2; opacity:0.7; margin-bottom:20px; line-height:1.8;">
+                Stuff I point people to when they're getting started — official rules, free tools, and other content worth your time. None of this is mine; I'm just pointing the way.
+            </p>
+
+            <!-- Category filter buttons — built dynamically -->
+            <div class="tag-filters" id="category-filters"></div>
+
+            <!-- Recommendation cards — populated by the script below -->
+            <div id="rec-feed"></div>
+
+        </section>
+
+        <aside class="right-column">
+            <div class="sidebar-box">
+                <h3>Socials</h3>
+                <!-- Add Discord link here -->
+                <p class="no-posts">Coming soon.</p>
+            </div>
+            <div class="sidebar-box">
+                <h3>Support</h3>
+                <!-- Add Patreon link here -->
+                <p class="no-posts">Coming soon.</p>
+            </div>
+        </aside>
+
+    </main>
+
+    <footer>
+        &copy; 2026 Jacob Lower &mdash; Lower Levels Tabletop Hub
+    </footer>
+
+    <script>
+        // ----------------------------------------------------------------
+        // Recommended page with category filtering.
+        // Reads from recommended/recommended.json (same folder).
+        //
+        // To add a recommendation, add an entry to recommended.json:
+        // {
+        //   "title": "Link Title",
+        //   "url": "https://...",
+        //   "description": "Why this is worth visiting.",
+        //   "category": "official",   ← official | tools | creators | community
+        //   "system": "motw"          ← dnd | motw | borg | general
+        // }
+        // ----------------------------------------------------------------
+        var CATEGORY_LABELS = {
+            'official':  'Official',
+            'tools':     'Tools',
+            'creators':  'Creators',
+            'community': 'Community'
+        };
+
+        var SYSTEM_LABELS = {
+            'dnd':     'D&D 2024',
+            'motw':    'Monster of the Week',
+            'borg':    'Borg-Likes',
+            'general': 'General'
+        };
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var feed      = document.getElementById('rec-feed');
+            var filterBar = document.getElementById('category-filters');
+            var activeTag = 'all';
+            var allItems  = [];
+
+            fetch('recommended.json')
+                .then(function (r) {
+                    if (!r.ok) throw new Error('Not found');
+                    return r.json();
+                })
+                .then(function (recs) {
+                    if (!recs.length) {
+                        feed.innerHTML = '<p class="no-posts">No recommendations yet. Check back soon!</p>';
+                        return;
+                    }
+
+                    // Collect unique categories
+                    var catSet = {};
+                    recs.forEach(function (r) { if (r.category) catSet[r.category] = true; });
+                    var allCats = Object.keys(catSet).sort();
+
+                    function buildFilters() {
+                        filterBar.innerHTML = '';
+                        var allBtn = document.createElement('button');
+                        allBtn.className = 'tag-filter' + (activeTag === 'all' ? ' active' : '');
+                        allBtn.textContent = 'All';
+                        allBtn.addEventListener('click', function () { setFilter('all'); });
+                        filterBar.appendChild(allBtn);
+
+                        allCats.forEach(function (cat) {
+                            var btn = document.createElement('button');
+                            btn.className = 'tag-filter' + (activeTag === cat ? ' active' : '');
+                            btn.textContent = CATEGORY_LABELS[cat] || cat;
+                            btn.addEventListener('click', function () { setFilter(cat); });
+                            filterBar.appendChild(btn);
+                        });
+                    }
+
+                    function setFilter(cat) {
+                        activeTag = cat;
+                        buildFilters();
+                        allItems.forEach(function (item) {
+                            item.div.style.display =
+                                (cat === 'all' || item.category === cat) ? '' : 'none';
+                        });
+                    }
+
+                    // Render recommendation cards
+                    recs.forEach(function (rec) {
+                        var div = document.createElement('div');
+                        div.className = 'doc-post';
+
+                        var categoryHtml = rec.category
+                            ? '<span class="resource-category-label">'
+                              + (CATEGORY_LABELS[rec.category] || rec.category)
+                              + '</span>'
+                            : '';
+
+                        var systemHtml = rec.system && rec.system !== 'general'
+                            ? '<span class="tag-pill">' + (SYSTEM_LABELS[rec.system] || rec.system) + '</span>'
+                            : '';
+
+                        div.innerHTML =
+                            categoryHtml
+                            + (systemHtml ? '<div class="post-tags">' + systemHtml + '</div>' : '')
+                            + '<h4>' + rec.title + '</h4>'
+                            + '<p>' + rec.description + '</p>'
+                            + '<a class="doc-link" href="' + rec.url
+                            + '" target="_blank" rel="noopener noreferrer">Visit &rarr;</a>';
+
+                        feed.appendChild(div);
+                        allItems.push({ div: div, category: rec.category || '' });
+                    });
+
+                    if (allCats.length) buildFilters();
+                })
+                .catch(function () {
+                    feed.innerHTML = '<p class="no-posts">Could not load recommendations.</p>';
+                });
+        });
+    </script>
+</body>
+</html>

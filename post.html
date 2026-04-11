@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Loading... | Lower Levels</title>
+    <link rel="stylesheet" href="styles.css" />
+    <!-- marked.js: lightweight Markdown renderer, no install needed -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Lower Levels Tabletop Hub</h1>
+        <nav>
+            <a href="./">Home</a>
+            <a href="dnd/">D&amp;D 2024</a>
+            <a href="motw/">Monster of the Week</a>
+            <a href="borg/">Borg-Likes</a>
+            <a href="resources/">Resources</a>
+            <a href="blog/">Blog</a>
+            <a href="recommended/">Recommended</a>
+        </nav>
+    </header>
+
+    <main class="container">
+
+        <aside class="left-column">
+            <div class="sidebar-box">
+                <h3>Blog</h3>
+                <a href="blog/">All Posts</a>
+            </div>
+        </aside>
+
+        <section class="center-column" id="post-content">
+            <p class="no-posts">Loading post...</p>
+        </section>
+
+        <aside class="right-column">
+            <div class="sidebar-box">
+                <h3>Socials</h3>
+                <!-- Add Discord link here -->
+                <p class="no-posts">Coming soon.</p>
+            </div>
+            <div class="sidebar-box">
+                <h3>Support</h3>
+                <!-- Add Patreon link here -->
+                <p class="no-posts">Coming soon.</p>
+            </div>
+        </aside>
+
+    </main>
+
+    <footer>
+        &copy; 2026 Jacob Lower &mdash; Lower Levels Tabletop Hub
+    </footer>
+
+    <script>
+        // ----------------------------------------------------------------
+        // Frontmatter parser
+        // Reads the --- block at the top of a .md file and returns
+        // { meta: { title, date, tags, ... }, body: "rest of markdown" }
+        // ----------------------------------------------------------------
+        function parseFrontmatter(text) {
+            var match = text.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+            if (!match) return { meta: {}, body: text };
+
+            var meta = {};
+            match[1].split('\n').forEach(function (line) {
+                var parts = line.match(/^([\w-]+):\s*(.+)$/);
+                if (!parts) return;
+                var key = parts[1].trim();
+                var val = parts[2].trim();
+                // Parse simple arrays:  [tag1, tag2]
+                if (val.charAt(0) === '[' && val.charAt(val.length - 1) === ']') {
+                    val = val.slice(1, -1).split(',').map(function (s) { return s.trim(); });
+                }
+                meta[key] = val;
+            });
+
+            return { meta: meta, body: match[2] };
+        }
+
+        // ----------------------------------------------------------------
+        // Main: read ?p= from URL, fetch the matching .md file, render it
+        // ----------------------------------------------------------------
+        document.addEventListener('DOMContentLoaded', function () {
+            var params = new URLSearchParams(window.location.search);
+            var slug = params.get('p');
+            var content = document.getElementById('post-content');
+
+            if (!slug) {
+                content.innerHTML = '<p class="no-posts">No post specified. <a href="blog/">Browse all posts &rarr;</a></p>';
+                return;
+            }
+
+            fetch('posts/' + slug + '.md')
+                .then(function (r) {
+                    if (!r.ok) throw new Error('Not found');
+                    return r.text();
+                })
+                .then(function (text) {
+                    var parsed = parseFrontmatter(text);
+                    var meta   = parsed.meta;
+                    var body   = parsed.body;
+
+                    // Update page title
+                    document.title = (meta.title || 'Post') + ' | Lower Levels';
+
+                    // Build tags HTML
+                    var tagsHtml = '';
+                    if (meta.tags && meta.tags.length) {
+                        var tags = Array.isArray(meta.tags) ? meta.tags : [meta.tags];
+                        tagsHtml = '<div class="post-tags">'
+                            + tags.map(function (t) {
+                                return '<span class="tag-pill">' + t + '</span>';
+                            }).join('')
+                            + '</div>';
+                    }
+
+                    // Build session meta row (only for session reports)
+                    var sessionBadge = '';
+                    var sessionMeta  = '';
+                    if (meta.type === 'session') {
+                        sessionBadge = '<span class="session-badge">Session Report</span><br>';
+                        var parts = [];
+                        if (meta.system)   parts.push('<span>System: ' + meta.system + '</span>');
+                        if (meta.players)  parts.push('<span>Players: ' + meta.players + '</span>');
+                        if (meta.duration) parts.push('<span>Duration: ' + meta.duration + '</span>');
+                        if (parts.length) {
+                            sessionMeta = '<div class="session-meta">' + parts.join('') + '</div>';
+                        }
+                    }
+
+                    // Render everything
+                    content.innerHTML =
+                        '<div class="post-header">'
+                        + sessionBadge
+                        + '<h2>' + (meta.title || 'Untitled') + '</h2>'
+                        + '<span class="post-date">' + (meta.date || '') + '</span>'
+                        + tagsHtml
+                        + sessionMeta
+                        + '</div>'
+                        + '<div class="post-body">' + marked.parse(body) + '</div>'
+                        + '<p style="margin-top:32px; font-size:0.7em;"><a href="blog/">&larr; Back to Blog</a></p>';
+                })
+                .catch(function () {
+                    content.innerHTML =
+                        '<p class="no-posts">Post not found. <a href="blog/">Browse all posts &rarr;</a></p>';
+                });
+        });
+    </script>
+</body>
+</html>
