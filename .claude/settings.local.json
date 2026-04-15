@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -n \"<script\" /c/Users/jlowe/Documents/LowerLevelsWebsite/lowerlevelswebsite/*.html /c/Users/jlowe/Documents/LowerLevelsWebsite/lowerlevelswebsite/*/*.html)",
+      "Bash(grep -n \"integrity\\\\|crossorigin\" /c/Users/jlowe/Documents/LowerLevelsWebsite/lowerlevelswebsite/*.html)",
+      "Bash(xargs grep:*)",
+      "Bash(curl -s \"https://cdn.jsdelivr.net/npm/marked@latest/package.json\")"
+    ]
+  }
+}
