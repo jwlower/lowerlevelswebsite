@@ -6,7 +6,7 @@
     <title>Loading... | Lower Levels</title>
     <link rel="stylesheet" href="styles.css" />
     <!-- marked.js: lightweight Markdown renderer, no install needed -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@14.1.4/marked.min.js"></script>
 </head>
 <body>
     <header>
@@ -55,6 +55,15 @@
     </footer>
 
     <script>
+        // Escape special HTML characters to prevent XSS when injecting into innerHTML.
+        function esc(str) {
+            return String(str == null ? '' : str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
         // ----------------------------------------------------------------
         // Frontmatter parser
         // Reads the --- block at the top of a .md file and returns
@@ -93,6 +102,12 @@
                 return;
             }
 
+            // Validate slug — only allow alphanumeric, hyphens, and underscores.
+            if (!/^[\w-]+$/.test(slug)) {
+                content.innerHTML = '<p class="no-posts">Invalid post. <a href="blog/">Browse all posts &rarr;</a></p>';
+                return;
+            }
+
             fetch('posts/' + slug + '.md')
                 .then(function (r) {
                     if (!r.ok) throw new Error('Not found');
@@ -112,7 +127,7 @@
                         var tags = Array.isArray(meta.tags) ? meta.tags : [meta.tags];
                         tagsHtml = '<div class="post-tags">'
                             + tags.map(function (t) {
-                                return '<span class="tag-pill">' + t + '</span>';
+                                return '<span class="tag-pill">' + esc(t) + '</span>';
                             }).join('')
                             + '</div>';
                     }
@@ -123,9 +138,9 @@
                     if (meta.type === 'session') {
                         sessionBadge = '<span class="session-badge">Session Report</span><br>';
                         var parts = [];
-                        if (meta.system)   parts.push('<span>System: ' + meta.system + '</span>');
-                        if (meta.players)  parts.push('<span>Players: ' + meta.players + '</span>');
-                        if (meta.duration) parts.push('<span>Duration: ' + meta.duration + '</span>');
+                        if (meta.system)   parts.push('<span>System: ' + esc(meta.system) + '</span>');
+                        if (meta.players)  parts.push('<span>Players: ' + esc(meta.players) + '</span>');
+                        if (meta.duration) parts.push('<span>Duration: ' + esc(meta.duration) + '</span>');
                         if (parts.length) {
                             sessionMeta = '<div class="session-meta">' + parts.join('') + '</div>';
                         }
@@ -135,8 +150,8 @@
                     content.innerHTML =
                         '<div class="post-header">'
                         + sessionBadge
-                        + '<h2>' + (meta.title || 'Untitled') + '</h2>'
-                        + '<span class="post-date">' + (meta.date || '') + '</span>'
+                        + '<h2>' + esc(meta.title || 'Untitled') + '</h2>'
+                        + '<span class="post-date">' + esc(meta.date || '') + '</span>'
                         + tagsHtml
                         + sessionMeta
                         + '</div>'

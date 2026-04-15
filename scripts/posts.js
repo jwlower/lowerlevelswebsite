@@ -23,6 +23,15 @@
 //   Announcement (inline body text, optional link):
 //   { "title":"...", "date":"...", "body":"...", "link":"https://..." }
 
+// Escape special HTML characters to prevent XSS when injecting into innerHTML.
+function esc(str) {
+    return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.post-feed').forEach(function (feed) {
         var jsonPath  = feed.dataset.json;
@@ -48,13 +57,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (post.body !== undefined) {
                         div.className = 'announcement-post';
                         var linkHtml = post.link
-                            ? '<a class="doc-link" href="' + post.link
+                            ? '<a class="doc-link" href="' + esc(post.link)
                               + '" target="_blank" rel="noopener noreferrer">Details &rarr;</a>'
                             : '';
                         div.innerHTML =
-                            '<h4>' + post.title + '</h4>'
-                            + '<span class="post-date">' + post.date + '</span>'
-                            + '<p>' + post.body + '</p>'
+                            '<h4>' + esc(post.title) + '</h4>'
+                            + '<span class="post-date">' + esc(post.date) + '</span>'
+                            + '<p>' + esc(post.body) + '</p>'
                             + linkHtml;
 
                     // ── Blog post or Session report ───────────────────────
@@ -68,9 +77,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         var sessionMeta = '';
                         if (post.type === 'session') {
                             var parts = [];
-                            if (post.system)   parts.push('<span>System: ' + post.system + '</span>');
-                            if (post.players)  parts.push('<span>Players: ' + post.players + '</span>');
-                            if (post.duration) parts.push('<span>Duration: ' + post.duration + '</span>');
+                            if (post.system)   parts.push('<span>System: ' + esc(post.system) + '</span>');
+                            if (post.players)  parts.push('<span>Players: ' + esc(post.players) + '</span>');
+                            if (post.duration) parts.push('<span>Duration: ' + esc(post.duration) + '</span>');
                             if (parts.length) {
                                 sessionMeta = '<div class="session-meta">' + parts.join('') + '</div>';
                             }
@@ -80,7 +89,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         var tagsHtml = tags.length
                             ? '<div class="post-tags">'
                               + tags.map(function (t) {
-                                  return '<span class="tag-pill">' + t + '</span>';
+                                  return '<span class="tag-pill">' + esc(t) + '</span>';
                               }).join('')
                               + '</div>'
                             : '';
@@ -88,22 +97,22 @@ document.addEventListener('DOMContentLoaded', function () {
                         div.setAttribute('data-tags', tags.join(','));
                         div.innerHTML =
                             sessionBadge
-                            + '<h4>' + post.title + '</h4>'
-                            + '<span class="post-date">' + post.date + '</span>'
+                            + '<h4>' + esc(post.title) + '</h4>'
+                            + '<span class="post-date">' + esc(post.date) + '</span>'
                             + tagsHtml
                             + sessionMeta
-                            + '<p>' + post.excerpt + '</p>'
-                            + '<a class="doc-link" href="' + postPath + '?p=' + post.slug
+                            + '<p>' + esc(post.excerpt) + '</p>'
+                            + '<a class="doc-link" href="' + esc(postPath) + '?p=' + esc(post.slug)
                             + '">Read Post &rarr;</a>';
 
                     // ── Document link (Google Drive / external URL) ───────
                     } else {
                         div.className = 'doc-post';
                         div.innerHTML =
-                            '<h4>' + post.title + '</h4>'
-                            + '<span class="post-date">' + post.date + '</span>'
-                            + '<p>' + post.description + '</p>'
-                            + '<a class="doc-link" href="' + post.link
+                            '<h4>' + esc(post.title) + '</h4>'
+                            + '<span class="post-date">' + esc(post.date) + '</span>'
+                            + '<p>' + esc(post.description) + '</p>'
+                            + '<a class="doc-link" href="' + esc(post.link)
                             + '" target="_blank" rel="noopener noreferrer">View Document &rarr;</a>';
                     }
 
