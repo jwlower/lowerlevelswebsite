@@ -13,17 +13,17 @@ A personal TTRPG site for one-shots, session reports, house rules, and resources
 
 ```
 /
-├── index.html                  Homepage — about blurb, announcements, game hubs, recent blog posts
+├── index.html                  Homepage: about blurb, announcements, game hubs, recent blog posts
 ├── post.html                   Universal blog post renderer (reads ?p=slug, renders Markdown)
-├── styles.css                  All styles — one file for the whole site
+├── styles.css                  All styles: one file for the whole site
 ├── announcements.json          Short dated activity posts shown on the homepage
 │
 ├── posts/
-│   ├── posts.json              Blog post manifest — one entry per post, newest first
+│   ├── posts.json              Blog post manifest: one entry per post, newest first
 │   └── YYYY-MM-DD-slug.md      Blog post content files
 │
 ├── resources/
-│   ├── index.html              Resource hub — Google Drive/PDF links with category filter
+│   ├── index.html              Resource hub: Google Drive/PDF links with category filter
 │   └── resources.json          Resource entries
 │
 ├── recommended/
@@ -31,7 +31,7 @@ A personal TTRPG site for one-shots, session reports, house rules, and resources
 │   └── recommended.json        Recommendation entries
 │
 ├── blog/
-│   └── index.html              Blog archive — all posts, newest first, with tag filter
+│   └── index.html              Blog archive: all posts, newest first, with tag filter
 │
 ├── dnd/
 │   ├── index.html              D&D 2024 hub
@@ -55,7 +55,7 @@ A personal TTRPG site for one-shots, session reports, house rules, and resources
 
 ## Writing a blog post (2 steps)
 
-### Step 1 — create the Markdown file
+### Step 1: create the Markdown file
 
 Create `posts/YYYY-MM-DD-your-title.md`. Use this frontmatter at the top:
 
@@ -87,7 +87,7 @@ duration: 3h
 ---
 ```
 
-### Step 2 — add one entry to `posts/posts.json`
+### Step 2: add one entry to `posts/posts.json`
 
 ```json
 {
@@ -100,7 +100,7 @@ duration: 3h
 }
 ```
 
-The slug must match the filename (without `.md`). That's it — the homepage feed, blog archive, and tag filters all update automatically.
+The slug must match the filename (without `.md`). That's it: the homepage feed, blog archive, and tag filters all update automatically.
 
 ---
 
@@ -179,7 +179,7 @@ Tags are free-form strings in the `tags` array of each `posts.json` entry. Whate
 
 ## Future hosting
 
-The site is plain HTML/CSS/JS with no build step — it runs anywhere that serves static files. When moving off Neocities:
+The site is plain HTML/CSS/JS with no build step: it runs anywhere that serves static files. When moving off Neocities:
 
-- **GitHub Pages / Cloudflare Pages / Netlify** — free, deploy by pushing to git. No changes needed to the site.
-- **Adding a build step later** — the `.md` files in `posts/` use standard frontmatter compatible with Hugo, Eleventy, and Jekyll. Migrating to an SSG later means pointing it at the existing files, not rewriting them.
+- **GitHub Pages / Cloudflare Pages / Netlify**: free, deploy by pushing to git. No changes needed to the site.
+- **Adding a build step later**: the `.md` files in `posts/` use standard frontmatter compatible with Hugo, Eleventy, and Jekyll. Migrating to an SSG later means pointing it at the existing files, not rewriting them.

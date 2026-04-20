@@ -6,7 +6,7 @@ tags: [general]
 type: blog
 ---
 
-Hey, welcome. Lower Levels is a tabletop RPG hub I'm building to house homebrew, one-shots, resources, and general TTRPG thoughts across a few games I play and love.
+Lower Levels is a tabletop RPG hub I'm building to house homebrew, one-shots, resources, and general TTRPG thoughts across a few games I play and love.
 
 ## What's here right now
 
