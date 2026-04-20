@@ -12,13 +12,13 @@ Lower Levels is a tabletop RPG hub I'm building to house homebrew, one-shots, re
 
 The site is organized by game. Each game gets its own page where I'll post documents — stuff like one-shots, house rules, custom playbooks, whatever I make. Right now there are three sections:
 
-**D&D 2024** — I'm running a campaign using the 2024 rules and I'll be posting one-shots and any house rules I cook up here. The first one-shot is already up:
+**D&D 2024:** I'm running a campaign using the 2024 rules and I'll be posting one-shots and any house rules I cook up here. The first one-shot is already up:
 
 [Dragon in the Gold Mine &rarr;](https://docs.google.com/document/d/1JHac81ZyYNa159ZM2ryceMW-M2kE9bY6cCpgvz2CNKU/edit?usp=sharing)
 
-**Monster of the Week** — One of my favorite systems. I'll be posting mysteries and custom content here as I build it out.
+**Monster of the Week:** One of my favorite systems. I'll be posting mysteries and custom content here as I build it out.
 
-**Borg-Likes** — Pirate Borg and Orc Borg specifically. Gritty, weird, and very fun. Content coming as I make it.
+**Borg-Likes:** Pirate Borg and Orc Borg specifically. Gritty, weird, and very fun. Content coming as I make it.
 
 ## What's coming
 

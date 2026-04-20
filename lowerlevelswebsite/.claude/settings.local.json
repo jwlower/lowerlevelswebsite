@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(humanizer)",
+      "Skill(humanizer:*)",
+      "WebFetch(domain:docs.google.com)",
+      "Bash(xargs grep *)"
+    ]
+  }
+}

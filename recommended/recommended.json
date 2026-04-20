@@ -9,7 +9,7 @@
   {
     "title": "D&D 2024 Free Rules",
     "url": "https://www.dndbeyond.com/posts/1804-start-playing-today-with-the-2024-d-d-free-rules",
-    "description": "The official free ruleset for D&D 2024. Everything you need to start playing without spending a dime.",
+    "description": "The official free ruleset for D&D 2024. Has everything you need to start playing.",
     "category": "official",
     "system": "dnd"
   },
@@ -44,7 +44,7 @@
   {
     "title": "Roll20",
     "url": "https://roll20.net/",
-    "description": "Free browser-based virtual tabletop. Good for running games online — built-in dice, maps, character sheets.",
+    "description": "Free browser-based virtual tabletop. Has built-in dice, maps, and character sheets.",
     "category": "tools",
     "system": "general"
   },
