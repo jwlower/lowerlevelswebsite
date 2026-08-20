@@ -132,3 +132,20 @@ dist
 /.vs/lowerlevelswebsite/FileContentIndex
 /.vs
 /.claude/settings.local.json
+
+# ---------------------------------------------------------------------------
+# Character creator rules database.
+#
+# Generated locally by tools/extract-5etools.mjs from a 5etools data directory.
+# The full build contains complete non-SRD book text, so it stays on the LAN
+# machine and is never committed or published. Regenerate it with:
+#
+#   node tools/extract-5etools.mjs --src "<path>/5etools/data" --tier full
+#
+# For the public site, build the SRD tier instead (CC BY 4.0 material only):
+#
+#   node tools/extract-5etools.mjs --src "<path>/5etools/data" --tier srd
+#
+# and commit dnd/creator/data-srd/ in its place.
+# ---------------------------------------------------------------------------
+/dnd/creator/data/

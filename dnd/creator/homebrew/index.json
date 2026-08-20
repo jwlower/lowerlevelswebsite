@@ -1,0 +1,4 @@
+{
+  "_comment": "List your homebrew files here. Each entry is a filename in this folder. Files listed here load for everyone using this server, unlike homebrew imported through the app, which stays on one device.",
+  "files": []
+}
