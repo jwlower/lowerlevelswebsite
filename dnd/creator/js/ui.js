@@ -83,6 +83,23 @@ export function card({ title, subtitle, blurb, meta = [], selected = false, badg
 	]);
 }
 
+/**
+ * The circular "?" that opens an explanation.
+ *
+ * Used wherever a choice needs one, so the affordance is identical everywhere:
+ * a small icon beside the thing it explains, rather than a sentence-shaped link
+ * somewhere else on the page.
+ */
+export function infoButton(onClick, label = "this") {
+	return el("button.info-btn", {
+		type: "button",
+		text: "?",
+		title: `What is ${label}?`,
+		"aria-label": `What is ${label}?`,
+		onclick: (e) => { e.preventDefault(); e.stopPropagation(); onClick(); },
+	});
+}
+
 /** Section wrapper with a heading and optional hint line. */
 export function section(title, hint, children) {
 	return el("section.step-section", {}, [
@@ -162,7 +179,11 @@ export function modal(title, contentNode) {
 	};
 
 	document.addEventListener("keydown", onKey);
-	document.body.append(overlay);
+	// Mount inside the themed container, not on <body>. Every colour token and
+	// control style is scoped to .creator, so a modal parented to <body> loses
+	// all of them -- which is why the panels rendered unstyled and see-through.
+	// position: fixed still covers the viewport from in here.
+	(document.querySelector(".creator") ?? document.body).append(overlay);
 	modalStack.push(overlay);
 	restackModals();
 	return close;
@@ -193,7 +214,7 @@ export function toast(message) {
 }
 
 /** Checkbox / radio list where the caller controls the selection limit. */
-export function choiceList({ options, selected, max = 1, onChange, disabledIds = new Set() }) {
+export function choiceList({ options, selected, max = 1, onChange, disabledIds = new Set(), onInfo }) {
 	const chosen = new Set(selected ?? []);
 	const single = max === 1;
 
@@ -225,10 +246,69 @@ export function choiceList({ options, selected, max = 1, onChange, disabledIds =
 					opt.hint && el("span.choice__hint", { text: opt.hint }),
 				]),
 				locked && el("span.choice__lock", { text: "already have" }),
+				// Sits beside the option it explains.
+				onInfo && infoButton(() => onInfo(opt), opt.label),
 			]);
 		}),
 	);
 	return list;
+}
+
+/** Small labelled stat tile, used for save DCs, slot counts and the like. */
+export const statBox = (label, value) =>
+	el("div.stat-box", {}, [
+		el("span.stat-box__label", { text: label }),
+		el("span.stat-box__value", { text: value }),
+	]);
+
+/**
+ * A clickable reference to a named thing, resolved by the glossary.
+ *
+ * Uses the same `.rr-ref[data-ref]` contract as rules text, so the one delegated
+ * listener handles it and no screen needs its own lookup. Items, languages and
+ * rules entries all come through here, which is why equipment on the sheet
+ * behaves exactly like a spell name does.
+ */
+export function refLink(text, ref, { title, className = "" } = {}) {
+	if (!ref) return el("span", { text });
+	return el(`span.rr-ref${className ? `.${className}` : ""}`, {
+		dataset: { ref },
+		role: "button",
+		tabindex: "0",
+		title: title ?? `What is ${text}?`,
+		text,
+	});
+}
+
+/** Shorthand for an item, which is the most common case. */
+export const itemLink = (name, extra = {}) =>
+	refLink(name, `item|${name}|`, { title: `Read ${name}`, ...extra });
+
+/**
+ * A row of clickable weapon properties and masteries.
+ *
+ * "Thrown", "Finesse" and "Nick" are rules with real text behind them, and they
+ * are exactly the things you forget mid-fight. Each becomes a chip that opens
+ * its entry, using the same delegated glossary listener as rules text.
+ */
+export function propertyChips(properties = [], masteries = [], edition = "2024") {
+	const source = edition === "2014" ? "PHB" : "XPHB";
+	const chips = [
+		...masteries.map((name) => ({ name, ref: `itemMastery|${name}|${source}`, kind: "mastery" })),
+		...properties.map((name) => ({ name, ref: `property|${name}|${source}`, kind: "property" })),
+	];
+	if (!chips.length) return null;
+
+	return el("span.prop-chips", {}, chips.map((chip) =>
+		el("span.prop-chip.rr-ref", {
+			class: chip.kind === "mastery" ? "prop-chip--mastery" : "",
+			dataset: { ref: chip.ref },
+			role: "button",
+			tabindex: "0",
+			title: `${chip.name} — click to read`,
+			text: chip.name,
+		}),
+	));
 }
 
 /** Debounce helper for text inputs. */

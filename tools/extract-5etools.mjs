@@ -300,6 +300,37 @@ function collectCreatureRefs(entries) {
 	return [...found.values()].map((c) => ({ ...c, id: idOf(c.name, c.source) }));
 }
 
+/**
+ * Finds every {@spell Name|SOURCE} reference in a raw entries tree.
+ *
+ * Species and feats hand out spells in prose: the High Elf lineage grants
+ * Prestidigitation, Magic Initiate grants two cantrips. Without collecting these
+ * the spell list can only show what the class grants, and a player has no way to
+ * tell where a cantrip they already have came from.
+ *
+ * Must run on RAW entries -- rendering strips the |SOURCE part.
+ */
+function collectSpellRefs(entries) {
+	const found = new Map();
+	const re = /\{@spell\s+([^}|]+)(?:\|([^}|]*))?(?:\|[^}]*)?\}/g;
+
+	const walk = (value) => {
+		if (typeof value === "string") {
+			for (const m of value.matchAll(re)) {
+				const name = m[1].trim();
+				const source = (m[2] || "").trim() || "PHB";
+				found.set(name.toLowerCase(), { name, source, id: idOf(name, source) });
+			}
+			return;
+		}
+		if (Array.isArray(value)) return value.forEach(walk);
+		if (value && typeof value === "object") Object.values(value).forEach(walk);
+	};
+
+	walk(entries);
+	return [...found.values()];
+}
+
 /** Plain-text version, for search indexes and the printable sheet. */
 const renderPlain = (str) =>
 	renderInline(str)
@@ -546,19 +577,25 @@ function normStartingEquipment(se) {
 			let gold = 0;
 			for (const c of contents) {
 				if (c == null) continue;
-				if (typeof c === "string") { items.push({ name: renderPlain(c), quantity: 1 }); continue; }
-				if (typeof c.value === "number") { gold += c.value / 100; continue; }
-				const raw = c.item ?? c.special ?? c.equipmentType;
-				if (!raw) continue;
-				const [nm] = String(raw).split("|");
-				const isCategory = Boolean(c.equipmentType && !c.item);
+				// Most background kits list plain strings ("bedroll|xphb") rather than
+				// objects. Treated as prose these lost their item reference, which put
+				// a line reading "bedroll|xphb" on the sheet with nothing behind it.
+				const entry = typeof c === "string" ? { item: c } : c;
+				if (typeof entry.value === "number") { gold += entry.value / 100; continue; }
+				const c2 = entry;
+				// "spellbook" arrives as a {special} entry even though there is a real
+				// Spellbook item, so a special that names a known item gets its ref.
+				const rawRef = c2.item ?? c2.special ?? c2.equipmentType;
+				if (!rawRef) continue;
+				const [nm] = String(rawRef).split("|");
+				const isCategory = Boolean(c2.equipmentType && !c2.item);
 				items.push(compact({
-					name: c.displayName
+					name: c2.displayName
 						?? (isCategory ? (EQUIPMENT_TYPE_NAMES[nm] ?? titleCase(nm)) : titleCase(nm)),
-					ref: c.item ? slug(nm) : undefined,
+					ref: c2.item || c2.special ? slug(nm) : undefined,
 					// A category entry needs the player to choose a specific item.
 					category: isCategory ? (EQUIPMENT_TYPE_NAMES[nm] ?? titleCase(nm)) : undefined,
-					quantity: c.quantity ?? 1,
+					quantity: c2.quantity ?? 1,
 				}));
 			}
 			options.push(compact({ key, items, gold: gold || undefined }));
@@ -567,8 +604,27 @@ function normStartingEquipment(se) {
 	return options.length ? options : null;
 }
 
+/**
+ * Title case that leaves the small words alone, because spell and item names
+ * are written "Speak with Animals" and "Aura of Life", not "Speak With Animals".
+ * The first word is always capitalised.
+ */
+const SMALL_WORDS = new Set([
+	"a", "an", "and", "as", "at", "but", "by", "for", "from", "in", "of", "on",
+	"or", "the", "to", "with", "without", "into", "per",
+]);
+
 const titleCase = (s) =>
-	String(s).replace(/\b\w/g, (c) => c.toUpperCase()).replace(/'S\b/g, "'s");
+	String(s)
+		.split(/(\s+)/)
+		.map((word, i) => {
+			if (/^\s+$/.test(word)) return word;
+			const lower = word.toLowerCase();
+			if (i > 0 && SMALL_WORDS.has(lower)) return lower;
+			return word.replace(/^\w/, (c) => c.toUpperCase());
+		})
+		.join("")
+		.replace(/'S\b/g, "'s");
 
 /* ------------------------------------------------------------------ *
  * Extractors
@@ -631,7 +687,25 @@ function extractSpeciesChoices(entries) {
 						? `<strong>${lbl}:</strong> ${body}`
 						: body;
 				});
-				return compact({ id: slug(name), name, html: detail.join(" &middot; ") });
+				// The columns are "Level 1 / Level 3 / Level 5", so the label tells
+				// us when each spell unlocks. Without this the app would offer a
+				// level-5 spell to a level-1 character.
+				const spellsByLevel = {};
+				cells.slice(1).forEach((cell, ci) => {
+					const label = labels[ci + 1] ?? "";
+					const m = /level\s*(\d+)/i.exec(label);
+					const gate = m ? Number(m[1]) : 1;
+					const refs = collectSpellRefs(cell);
+					if (!refs.length) return;
+					spellsByLevel[gate] = [...(spellsByLevel[gate] ?? []), ...refs];
+				});
+
+				return compact({
+					id: slug(name), name,
+					html: detail.join(" &middot; "),
+					spellRefs: collectSpellRefs(row),
+					spellsByLevel,
+				});
 			});
 		}
 
@@ -646,7 +720,13 @@ function extractSpeciesChoices(entries) {
 						const html = it.entry
 							? renderInline(it.entry)
 							: renderEntries(it.entries).map(blockToHtml).join(" ");
-						return compact({ id: slug(name), name, html });
+						const refs = collectSpellRefs(it.entries ?? it.entry);
+						return compact({
+							id: slug(name), name, html,
+							spellRefs: refs,
+							// Hanging-list options have no level table: available at once.
+							spellsByLevel: refs.length ? { 1: refs } : undefined,
+						});
 					});
 			}
 		}
@@ -722,6 +802,8 @@ function extractSpecies() {
 			traitTags: r.traitTags,
 			age: r.age,
 			blurb: fluff.get(`${r.name}|${r.source}`) ?? blurbFrom(blocks),
+			// Spells this species hands out in its trait text.
+			spellRefs: collectSpellRefs(r.entries),
 			traits,
 			// Required in-trait picks (Elven Lineage, Draconic Ancestry, ...).
 			choices: extractSpeciesChoices(r.entries),
@@ -777,9 +859,134 @@ function extractBackgrounds() {
 			toolProficiencies: normProficiencies(b.toolProficiencies, { slugify: false }),
 			languageProficiencies: normProficiencies(b.languageProficiencies, { slugify: false }),
 			startingEquipment: normStartingEquipment(b.startingEquipment),
+			spellRefs: collectSpellRefs(b.entries),
 			blurb: fluff.get(`${b.name}|${b.source}`) ?? blurbFrom(blocks),
 			html: blocks.map(blockToHtml).join(""),
 		});
+	});
+}
+
+/**
+ * The decisions a feat makes you take, and the things it hands over.
+ *
+ * Feats are the most mechanically varied thing in the book: Resilient raises an
+ * ability AND grants a saving throw proficiency, Skilled hands out three skills
+ * or tools, Magic Initiate gives cantrips chosen from another class's list. All
+ * of that is structured in the source data, so it is normalised here rather than
+ * left as prose the app cannot act on.
+ *
+ * Produces:
+ *   abilityChoices  [{ from, amount, count }]   pick which ability to raise
+ *   fixedAbility    { str: 1, ... }             raised outright
+ *   saveChoices     [{ from }]                  Resilient's save proficiency
+ *   skillChoices    [{ from, count }]           "anySkill"/"anyTool" expand later
+ *   spellGrants     [...]                       fixed spells, as for subclasses
+ *   spellChoices    [{ variant, kind, level, count, filter }]  pick from a list
+ */
+function normFeatMechanics(feat) {
+	const abilityChoices = [];
+	const fixedAbility = {};
+
+	for (const block of feat.ability ?? []) {
+		if (!block || typeof block !== "object") continue;
+		if (block.choose) {
+			abilityChoices.push(compact({
+				from: block.choose.from ?? [],
+				amount: block.choose.amount ?? 1,
+				count: block.choose.count ?? 1,
+				hidden: block.hidden || undefined,
+			}));
+			continue;
+		}
+		for (const [k, v] of Object.entries(block)) {
+			if (typeof v === "number") fixedAbility[k] = (fixedAbility[k] ?? 0) + v;
+		}
+	}
+
+	const saveChoices = [];
+	for (const block of feat.savingThrowProficiencies ?? []) {
+		if (block?.choose?.from) saveChoices.push({ from: block.choose.from });
+	}
+
+	const languages = normProficiencies(feat.languageProficiencies, { slugify: false });
+
+	// Skilled and friends: "anySkill" / "anyTool" are expanded by the app, which
+	// knows the character's existing proficiencies.
+	const skillChoices = [];
+	for (const block of feat.skillToolLanguageProficiencies ?? []) {
+		for (const choice of (Array.isArray(block?.choose) ? block.choose : [block?.choose]).filter(Boolean)) {
+			skillChoices.push({ from: choice.from ?? [], count: choice.count ?? 1 });
+		}
+	}
+	for (const block of feat.skillProficiencies ?? []) {
+		if (block?.choose?.from) {
+			skillChoices.push({ from: block.choose.from, count: block.choose.count ?? 1 });
+		}
+	}
+
+	// Spells: fixed grants reuse the subclass normaliser; the "choose from a
+	// list" placeholders become explicit choices.
+	const spellGrants = normAdditionalSpells(feat.additionalSpells);
+	const spellChoices = [];
+
+	for (const group of feat.additionalSpells ?? []) {
+		if (!group || typeof group !== "object") continue;
+		const variant = group.name ?? null;
+
+		for (const kind of ["known", "innate", "prepared", "expanded"]) {
+			const byLevel = group[kind];
+			if (!byLevel || typeof byLevel !== "object") continue;
+
+			// Feats use "_" for "no level gate".
+			for (const [levelKey, value] of Object.entries(byLevel)) {
+				const level = levelKey === "_" ? 1 : Number(levelKey);
+				if (!Number.isFinite(level)) continue;
+
+				const collect = (list, note) => {
+					for (const raw of Array.isArray(list) ? list : [list]) {
+						if (!raw || typeof raw !== "object" || !raw.choose) continue;
+						spellChoices.push(compact({
+							variant, kind, level, note,
+							count: raw.count ?? 1,
+							filter: String(raw.choose),
+						}));
+					}
+				};
+
+				if (Array.isArray(value)) { collect(value); continue; }
+				if (value && typeof value === "object") {
+					for (const [mode, inner] of Object.entries(value)) {
+						if (Array.isArray(inner)) { collect(inner, mode); continue; }
+						if (inner && typeof inner === "object") {
+							for (const [times, list] of Object.entries(inner)) {
+								const per = times.endsWith("e") ? `${times.slice(0, -1)}/day each` : `${times}/day`;
+								collect(list, `${mode} ${per}`);
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// The spellcasting ability, where the feat lets you choose it.
+	const spellAbility = (feat.additionalSpells ?? [])
+		.map((g) => g?.ability)
+		.filter(Boolean)
+		.map((a) => (a === "inherit" ? { inherit: true } : { choose: a.choose ?? [a] }))[0] ?? null;
+
+	return compact({
+		// { fixed: ["Sylvan"], choices: [{ count: 3, from: "any" }] }
+		languages: (languages?.fixed?.length || languages?.choices?.length) ? languages : undefined,
+		abilityChoices,
+		fixedAbility,
+		saveChoices,
+		skillChoices,
+		spellGrants,
+		spellChoices,
+		spellAbility,
+		// Variant names, when the feat offers alternative packages.
+		spellVariants: uniq((feat.additionalSpells ?? []).map((g) => g?.name).filter(Boolean)),
 	});
 }
 
@@ -805,9 +1012,13 @@ function extractFeats() {
 			repeatable: f.repeatable,
 			prerequisite: f.prerequisite ? renderPrereq(f.prerequisite) : null,
 			ability: normAbility(f.ability),
+			// Everything the feat makes you choose, and everything it grants.
+			mechanics: normFeatMechanics(f),
 			skillProficiencies: normProficiencies(f.skillProficiencies),
 			toolProficiencies: normProficiencies(f.toolProficiencies, { slugify: false }),
 			blurb: blurbFrom(blocks),
+			// Magic Initiate and friends grant spells; record which.
+			spellRefs: collectSpellRefs(f.entries),
 			html: blocks.map(blockToHtml).join(""),
 		});
 	});
@@ -871,6 +1082,212 @@ function extractOptionalFeatures() {
 			html: blocks.map(blockToHtml).join(""),
 		});
 	});
+}
+
+/**
+ * Flattens a class or subclass `additionalSpells` block.
+ *
+ * This is where domain spells live: a Life Domain Cleric always has Bless and
+ * Cure Wounds prepared from level 3, and an Oath of the Ancients Paladin gets
+ * Ensnaring Strike and Speak with Animals. They are granted, not chosen, so they
+ * do not spend a prepared slot -- but a player still needs to see them.
+ *
+ * 5etools stores these in six shapes, which are normalised to one list:
+ *   prepared   always prepared, the common case
+ *   known      added to the spells you know
+ *   innate     castable without a slot; sometimes {ritual: []} or {daily: {...}}
+ *   expanded   widens the list you may choose from -- NOT granted outright
+ *   name       a variant the player picks between (Circle of the Land terrain)
+ *
+ * Each result is { variant, kind, level, note, spells: [{name, source, id}] }.
+ */
+function normAdditionalSpells(additionalSpells) {
+	const out = [];
+	if (!Array.isArray(additionalSpells)) return out;
+
+	const toSpell = (raw) => {
+		if (typeof raw !== "string") return null;
+		// Entries can carry a filter suffix after a #, which is not a spell name.
+		const [namePart] = raw.split("#");
+		const [name, source] = namePart.split("|");
+		if (!name) return null;
+		const src = (source || "PHB").trim();
+		return { name: titleCase(name.trim()), source: src.toUpperCase(), id: idOf(name.trim(), src) };
+	};
+
+	for (const group of additionalSpells) {
+		if (!group || typeof group !== "object") continue;
+		const variant = group.name ?? null;
+
+		for (const kind of ["prepared", "known", "innate", "expanded"]) {
+			const byLevel = group[kind];
+			if (!byLevel || typeof byLevel !== "object") continue;
+
+			for (const [levelKey, value] of Object.entries(byLevel)) {
+				const level = Number(levelKey);
+				if (!Number.isFinite(level)) continue;
+
+				// A plain list of spells.
+				if (Array.isArray(value)) {
+					const spells = value.map(toSpell).filter(Boolean);
+					if (spells.length) out.push({ variant, kind, level, spells });
+					continue;
+				}
+
+				// {ritual: [...]} or {daily: {"1": [...], "1e": [...]}}
+				if (value && typeof value === "object") {
+					for (const [mode, inner] of Object.entries(value)) {
+						if (Array.isArray(inner)) {
+							const spells = inner.map(toSpell).filter(Boolean);
+							if (spells.length) out.push({ variant, kind, level, note: mode, spells });
+							continue;
+						}
+						if (inner && typeof inner === "object") {
+							for (const [times, list] of Object.entries(inner)) {
+								const spells = (Array.isArray(list) ? list : []).map(toSpell).filter(Boolean);
+								if (!spells.length) continue;
+								// "1e" means once each; "1" means once in total.
+								const per = times.endsWith("e") ? `${times.slice(0, -1)}/day each` : `${times}/day`;
+								out.push({ variant, kind, level, note: `${mode} ${per}`, spells });
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return out;
+}
+
+/**
+ * Works out whether a class feature is a limited resource, and how it recharges.
+ *
+ * This is what makes a rest mean something: Second Wind has uses that come back
+ * on a Short Rest, Action Surge on a Short or Long Rest, Channel Divinity on a
+ * Short Rest. None of it is a machine-readable field, so it is read from two
+ * places that ARE reliable:
+ *
+ *   uses     the class table column named after the feature ("Second Wind",
+ *            "Channel Divinity", "Focus Points"), which is per level
+ *   recharge the regain clause in the feature's own text
+ *
+ * Features that turn out to have neither are not resources, and return null.
+ */
+const RESOURCE_COLUMN_ALIASES = {
+	"monk's focus": "focus points",
+	"ki": "ki points",
+	"sorcery points": "sorcery points",
+	"rage": "rages",
+};
+
+const COUNT_WORDS = { one: 1, two: 2, three: 3, four: 4 };
+
+/**
+ * Expertise a feature grants, and which skills it may be spent on.
+ *
+ * Like the resource counts, this is prose rather than data, but the wording is
+ * consistent across every class that grants it:
+ *
+ *   Rogue     "You gain Expertise in two of your skill proficiencies of your
+ *              choice"                                    -> any two you have
+ *   Wizard    "Choose one of the following skills in which you have
+ *              proficiency: Arcana, History, ..."          -> one from a list
+ *   Ranger    "Choose two of your skill proficiencies with which you lack
+ *              Expertise"                                  -> any two you have
+ *
+ * `from` is either an explicit list of skill names or the string "proficient",
+ * meaning any skill the character is already proficient in.
+ */
+function normFeatureExpertise(feature) {
+	const text = renderPlain(JSON.stringify(feature.entries ?? []));
+	if (!/Expertise/i.test(text)) return null;
+
+	// An explicit list: "the following skills in which you have proficiency: A, B, or C."
+	const listed = /following skills? in which you have proficiency:\s*([^.]+)\./i.exec(text);
+	if (listed) {
+		const from = listed[1]
+			.split(/,|\bor\b/)
+			.map((t) => t.trim())
+			.filter(Boolean);
+		const count = COUNT_WORDS[(/Choose (one|two|three|four)/i.exec(text)?.[1] ?? "one").toLowerCase()] ?? 1;
+		return compact({ count, from });
+	}
+
+	// "Expertise in two of your skill proficiencies", or "Choose two of your
+	// skill proficiencies with which you lack Expertise".
+	const anyOf =
+		/Expertise in (one|two|three|four) of your skill/i.exec(text)
+		?? /Choose (one|two|three|four) of your skill proficiencies/i.exec(text);
+	if (anyOf) {
+		return { count: COUNT_WORDS[anyOf[1].toLowerCase()] ?? 1, from: "proficient" };
+	}
+
+	return null;
+}
+
+function normFeatureResource(feature, classTableGroups) {
+	const text = renderPlain(JSON.stringify(feature.entries ?? []));
+
+	// The clause has to be about *expending and regaining uses*, not merely
+	// mentioning a rest. Weapon Mastery lets you swap masteries on a Long Rest
+	// and Spellcasting mentions rests constantly, but neither is a resource you
+	// spend, so a looser pattern fills the tracker with things that never
+	// deplete.
+	const spendsUses = /(?:regain(?:s)?\s+(?:all\s+)?(?:your\s+)?(?:expended\s+)?(?:uses|charges|rages|points|slots)|regain\s+the\s+use|can(?:no|')t\s+(?:use|do)\s+[^.]{0,40}?again\s+until|expended\s+uses)/i;
+	if (!spendsUses.test(text)) return null;
+
+	// "Short Rest" wins when both are named: "a Short or Long Rest" means it
+	// comes back on the shorter of the two.
+	let recharge = null;
+	if (/Short\s+(?:or\s+Long\s+)?Rest/i.test(text)) recharge = "short";
+	else if (/Long\s+Rest/i.test(text)) recharge = "long";
+
+	// Uses from the class table.
+	const wanted = (RESOURCE_COLUMN_ALIASES[feature.name.toLowerCase()] ?? feature.name).toLowerCase();
+	let uses = null;
+	for (const group of classTableGroups ?? []) {
+		const cols = (group.colLabels ?? []).map((c) => renderPlain(c).toLowerCase());
+		const i = cols.findIndex((c) => c === wanted);
+		if (i === -1 || !Array.isArray(group.rows)) continue;
+		uses = group.rows.slice(0, 20).map((row) => {
+			const cell = Array.isArray(row) ? row[i] : null;
+			const n = Number(typeof cell === "object" && cell !== null ? cell.value : cell);
+			return Number.isFinite(n) ? n : 0;
+		});
+		break;
+	}
+
+	// Failing a table column, the text often states the count outright.
+	let formula = null;
+	if (!uses) {
+		if (/number of times equal to your Proficiency Bonus/i.test(text)) {
+			formula = "proficiency";
+		} else if (/(?:number of times|times) equal to your (Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma) modifier/i.test(text)) {
+			// Bardic Inspiration and friends scale off an ability instead.
+			const ab = /equal to your (Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma) modifier/i.exec(text);
+			formula = ab[1].slice(0, 3).toLowerCase();
+		} else {
+			// Take whichever count appears FIRST. Action Surge reads "once ... and
+			// beginning at level 17, twice", so scanning for "twice" on its own would
+			// grant the level-17 count from level 2.
+			const first = /\b(once|twice)\b/i.exec(text);
+			if (first) formula = first[1].toLowerCase() === "twice" ? "2" : "1";
+			// "You can't use it again until you finish a Long Rest" is one use.
+			else if (/can(?:no|')t\s+(?:use|do)\s+[^.]{0,40}?again\s+until/i.test(text)) formula = "1";
+		}
+	}
+
+	// Without a recharge clause or a count there is nothing to track.
+	if (!recharge) return null;
+	if (!uses && !formula) return null;
+
+	// A few features name a table column that counts what you KNOW rather than
+	// what you can spend. Those are not resources.
+	const KNOWLEDGE_COLUMNS = new Set(["weapon mastery", "cantrips", "prepared spells", "spells known"]);
+	if (KNOWLEDGE_COLUMNS.has(wanted)) return null;
+
+	return compact({ recharge, uses, formula });
 }
 
 /**
@@ -987,6 +1404,10 @@ function extractClasses() {
 					level: lvl,
 					srd: isSrd(cf),
 					creatureRefs: collectCreatureRefs(inlineRefs(cf.entries)),
+					// Limited uses and how a rest brings them back.
+					resource: normFeatureResource(cf, c.classTableGroups),
+					// Expertise this feature lets the player assign.
+					expertise: normFeatureExpertise(cf),
 					isClassFeatureVariant: cf.isClassFeatureVariant,
 					html: blocks.map(blockToHtml).join(""),
 					blurb: blurbFrom(blocks, 140),
@@ -1024,6 +1445,11 @@ function extractClasses() {
 							name: sf.name,
 							level: lvl,
 							creatureRefs: collectCreatureRefs(inlineRefs(sf.entries)),
+							resource: normFeatureResource(sf, [
+								...(c.classTableGroups ?? []),
+								...(s.subclassTableGroups ?? []),
+							]),
+							expertise: normFeatureExpertise(sf),
 							html: blocks.map(blockToHtml).join(""),
 							blurb: blurbFrom(blocks, 140),
 						}));
@@ -1039,6 +1465,8 @@ function extractClasses() {
 						spellcastingAbility: s.spellcastingAbility,
 						casterProgression: s.casterProgression,
 						additionalSpells: deepRender(s.additionalSpells),
+						// Domain / oath / circle spells, normalised and level-gated.
+						spellGrants: normAdditionalSpells(s.additionalSpells),
 						optionalfeatureProgression: deepRender(s.optionalfeatureProgression),
 						subclassTableGroups: deepRender(s.subclassTableGroups),
 						blurb: sLevels.flatMap((l) => l.features).find((f) => f.blurb)?.blurb ?? "",
@@ -1081,6 +1509,7 @@ function extractClasses() {
 					requirements: c.multiclassing.requirements,
 					proficienciesGained: c.multiclassing.proficienciesGained,
 				}) : null,
+				spellGrants: normAdditionalSpells(c.additionalSpells),
 				casterProgression: c.casterProgression,
 				spellcastingAbility: c.spellcastingAbility,
 				preparedSpells: c.preparedSpells,
@@ -1164,6 +1593,32 @@ function extractSpellcasting(cls) {
 	});
 }
 
+/**
+ * Normalises an adventuring pack's contents.
+ *
+ * 5etools writes these as a mixed array: a bare "bedroll|phb" string, an
+ * object with a quantity, or a {special} entry for something that has no item
+ * of its own. Flattening them here means the app can offer to unpack a pack
+ * without knowing any of that.
+ */
+function normPackContents(contents) {
+	if (!Array.isArray(contents) || !contents.length) return undefined;
+	const out = [];
+	for (const raw of contents) {
+		const entry = typeof raw === "string" ? { item: raw } : (raw ?? {});
+		const quantity = Number(entry.quantity ?? 1) || 1;
+		if (entry.special) {
+			// No item record exists, so it is carried as a plain named line.
+			out.push(compact({ name: titleCase(String(entry.special)), quantity, special: true }));
+			continue;
+		}
+		if (!entry.item) continue;
+		const [nm] = String(entry.item).split("|");
+		out.push(compact({ name: titleCase(nm), ref: slug(nm), quantity }));
+	}
+	return out.length ? out : undefined;
+}
+
 function extractItems() {
 	const base = readJson("items-base.json");
 	const magic = readJson("items.json");
@@ -1230,6 +1685,10 @@ function extractItems() {
 			bonusSpellAttack: i.bonusSpellAttack,
 			charges: deepRender(i.charges),
 			containerCapacity: deepRender(i.containerCapacity),
+			// What is inside an adventuring pack. Entries are either an item
+			// reference or a {special} string for something with no item entry of
+			// its own ("alms box", "vestments").
+			packContents: normPackContents(i.packContents),
 			blurb: blurbFrom(blocks, 160),
 			html: blocks.map(blockToHtml).join(""),
 		});
@@ -1337,9 +1796,51 @@ function extractItems() {
 		}
 	}
 
+	// items.json holds ordinary adventuring gear (Bedroll, Rope, Priest's Pack)
+	// alongside the magic items, and every class and background kit refers to
+	// that gear. Splitting the output by file would leave those references
+	// dangling, so the split is by whether an item is actually magical.
+	const fromItemsFile = (magic?.item ?? []).map((i) => norm(i, true));
+	const mundaneFromItemsFile = fromItemsFile.filter((i) => !i.magic);
+	const trulyMagical = fromItemsFile.filter((i) => i.magic);
+
+	// Categories like "Holy Symbol" and "Arcane Focus" are item GROUPS in
+	// 5etools, not items, yet class and background kits refer to them exactly as
+	// they refer to items. They are added to the equipment list as entries that
+	// name their members, so a reference to one resolves and the UI can offer the
+	// real choice instead of leaving a dead line on the sheet.
+	const groupsAsItems = (magic?.itemGroup ?? []).map((g) => {
+		const blocks = renderEntries(g.entries);
+		const typeKey = g.type ? String(g.type).split("|")[0] : undefined;
+		return compact({
+			id: idOf(g.name, g.source),
+			name: g.name,
+			source: g.source,
+			page: g.page,
+			edition: editionOf(g),
+			srd: isSrd(g),
+			type: typeKey,
+			typeName: TYPE_NAMES[g.type] ?? TYPE_NAMES[typeKey],
+			costGp: typeof g.value === "number" ? g.value / 100 : undefined,
+			weight: g.weight,
+			// The flag the UI keys on to ask "which one?".
+			isGroup: true,
+			members: (g.items ?? []).map((m) => {
+				const [nm] = String(m).split("|");
+				return { name: titleCase(nm), ref: slug(nm) };
+			}),
+			blurb: blurbFrom(blocks, 160),
+			html: blocks.map(blockToHtml).join(""),
+		});
+	});
+
 	return {
-		gear: (base?.baseitem ?? []).map((i) => norm(i, false)),
-		magic: [...(magic?.item ?? []).map((i) => norm(i, true)), ...generated],
+		gear: [
+			...(base?.baseitem ?? []).map((i) => norm(i, false)),
+			...mundaneFromItemsFile,
+			...groupsAsItems,
+		],
+		magic: [...trulyMagical, ...generated],
 		variants: normVariants,
 		// Tool categories ("Gaming Set", "Artisan's Tools") and their members, so
 		// a background granting "any Gaming Set" can offer the four real options.
@@ -1355,9 +1856,12 @@ function extractItems() {
 				return { name: titleCase(nm), ref: slug(nm) };
 			}),
 		})),
+		// Weapon properties (Finesse, Thrown, Light) exist in both editions with
+		// different wording, so tag the edition to pick the right one at runtime.
 		properties: (base?.itemProperty ?? []).map((p) => compact({
 			abbreviation: p.abbreviation,
 			source: p.source,
+			edition: editionOf(p),
 			name: p.name ?? p.entries?.[0]?.name,
 			html: renderEntries(p.entries).map(blockToHtml).join(""),
 		})).filter((p) => p.name),

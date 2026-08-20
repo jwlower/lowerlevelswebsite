@@ -10,8 +10,8 @@
  */
 
 import { db, ensure, itemDescription } from "./data.js";
-import { el, modal, rulesHtml } from "./ui.js";
-import { statBlock, findCreature, creatureSubtitle } from "./statblock.js";
+import { el, modal, rulesHtml, propertyChips } from "./ui.js";
+import { statBlock, findCreature, creatureSubtitle, creatureRefLinks } from "./statblock.js";
 
 /**
  * Which dataset answers each tag, and which lazily-loaded file backs it.
@@ -27,6 +27,9 @@ const RESOLVERS = {
 	action: { load: "reference", list: () => db.reference?.actions, kind: "Action" },
 	variantrule: { load: "reference", list: () => db.reference?.variantRules, kind: "Rule" },
 	itemMastery: { load: "reference", list: () => db.reference?.itemMasteries, kind: "Weapon Mastery" },
+	// Weapon properties (Finesse, Thrown, Light). 5etools has no inline tag for
+	// these, so the app emits property|Name refs of its own.
+	property: { load: "reference", list: () => db.reference?.itemProperties, kind: "Weapon Property" },
 
 	spell: { load: "spells", list: () => db.spells, kind: "Spell" },
 	feat: { load: null, list: () => db.feats, kind: "Feat" },
@@ -95,12 +98,132 @@ export async function lookup(tag, name, source) {
 	return { entry, kind: resolver.kind };
 }
 
+/* ------------------------------------------------------------------ *
+ * Spells
+ *
+ * One renderer, used by the spell pickers, the sheet's prepared list, and any
+ * mention of a spell in rules text -- so "Fireball" shows the same card
+ * wherever it is clicked.
+ * ------------------------------------------------------------------ */
+
+const SPELL_SCHOOLS = {
+	A: "Abjuration", C: "Conjuration", D: "Divination", E: "Enchantment",
+	V: "Evocation", I: "Illusion", N: "Necromancy", T: "Transmutation",
+};
+
+/** "1 action", "1 bonus action", "10 minutes". */
+function castingTime(time) {
+	if (!Array.isArray(time) || !time.length) return null;
+	return time.map((t) => {
+		const unit = t.unit === "bonus" ? "bonus action" : t.unit;
+		const base = `${t.number ?? 1} ${unit}${(t.number ?? 1) > 1 ? "s" : ""}`;
+		return t.condition ? `${base} (${t.condition})` : base;
+	}).join(" or ");
+}
+
+/** "Self", "60 feet", "Self (20-foot radius)". */
+function spellRange(range) {
+	if (!range) return null;
+	if (typeof range === "string") return range;
+	const dist = range.distance;
+	if (!dist) return range.type ?? null;
+	if (dist.type === "self") return "Self";
+	if (dist.type === "touch") return "Touch";
+	if (dist.type === "sight") return "Sight";
+	if (dist.type === "unlimited") return "Unlimited";
+	const amount = dist.amount != null ? `${dist.amount} ` : "";
+	return `${amount}${dist.type ?? ""}`.trim();
+}
+
+/** "V, S, M (a ball of bat guano)". */
+function spellComponents(components) {
+	if (!components) return null;
+	const parts = [];
+	if (components.v) parts.push("V");
+	if (components.s) parts.push("S");
+	if (components.m) {
+		const m = typeof components.m === "object" ? components.m.text : components.m;
+		parts.push(`M (${m})`);
+	}
+	return parts.join(", ") || null;
+}
+
+/** "Instantaneous", "1 minute", "Up to 1 hour (Concentration)". */
+function spellDuration(duration) {
+	if (!Array.isArray(duration) || !duration.length) return null;
+	return duration.map((d) => {
+		if (d.type === "instant") return "Instantaneous";
+		if (d.type === "permanent") return `Until ${(d.ends ?? ["dispelled"]).join(" or ")}`;
+		if (d.type === "special") return "Special";
+		const amount = d.duration?.amount;
+		const unit = d.duration?.type;
+		const base = amount != null ? `${amount} ${unit}${amount > 1 ? "s" : ""}` : (unit ?? "");
+		const upTo = d.duration?.upTo ? "Up to " : "";
+		return `${upTo}${base}${d.concentration ? " (Concentration)" : ""}`.trim();
+	}).join(", ");
+}
+
+/** The full spell card. */
+export function spellDetail(sp) {
+	if (!sp) return el("p.muted", { text: "Spell not found in the loaded database." });
+
+	const school = SPELL_SCHOOLS[sp.school] ?? sp.school;
+	const headline = [
+		sp.level === 0 ? `${school} cantrip` : `Level ${sp.level} ${school}`,
+		sp.ritual ? "Ritual" : null,
+	].filter(Boolean).join(" · ");
+
+	const line = (label, value) =>
+		value ? el("div.sb-line", {}, [
+			el("span.sb-line__label", { text: label }),
+			el("span.sb-line__value", { text: value }),
+		]) : null;
+
+	return el("div.spell-detail", {}, [
+		el("p.muted", { text: `${headline} · ${sp.source}` }),
+		el("div.sb-core", {}, [
+			line("Casting Time", castingTime(sp.time)),
+			line("Range", spellRange(sp.range)),
+			line("Components", spellComponents(sp.components)),
+			line("Duration", spellDuration(sp.duration)),
+			line("Classes", (sp.classesDetailed ?? []).map((c) => c.name).join(", ")
+				|| (sp.classes ?? []).join(", ")),
+		].filter(Boolean)),
+		rulesHtml(sp.html),
+		sp.higherLevel ? rulesHtml(sp.higherLevel) : null,
+		// Summoning spells link straight to the stat block they conjure.
+		creatureRefLinks(sp.creatureRefs),
+	].filter(Boolean));
+}
+
+/**
+ * Opens a spell. Accepts a spell object or a name/id, loading the spell file
+ * first if a name was given before it was needed.
+ */
+export async function showSpell(spellOrName) {
+	if (spellOrName && typeof spellOrName === "object") {
+		modal(spellOrName.name, spellDetail(spellOrName));
+		return;
+	}
+
+	// Resolve BEFORE opening, so the window is titled "Fireball" rather than the
+	// raw id "fireball--xphb".
+	await ensure("spells");
+	const found = (db.spells ?? []).find(
+		(sp) => sp.id === spellOrName
+			|| sp.name.toLowerCase() === String(spellOrName).toLowerCase(),
+	);
+	modal(found?.name ?? String(spellOrName), spellDetail(found));
+}
+
 /** Builds the modal body for a resolved entry. */
 function renderEntry(entry, kind, tag) {
 	if (tag === "creature") {
 		const creature = findCreature(entry.id) ?? entry;
 		return statBlock(creature);
 	}
+	// Spells get the full card: casting time, range, components, duration.
+	if (tag === "spell") return spellDetail(entry);
 
 	const meta = [
 		kind,
@@ -131,18 +254,26 @@ function itemStats(item) {
 		["Damage", item.damage ? `${item.damage} ${item.damageType ?? ""}`.trim() : null],
 		["Versatile", item.versatileDamage],
 		["AC", item.ac],
-		["Properties", (item.properties ?? []).join(", ") || null],
-		["Mastery", (item.mastery ?? []).join(", ") || null],
+		// Properties and masteries render as chips below, not as flat text.
+		["Mastery", null],
 		["Attunement", item.reqAttune ? "required" : null],
 	].filter(([, v]) => v != null && v !== "");
 
-	if (!rows.length) return null;
-	return el("div.sb-core", {}, rows.map(([label, value]) =>
-		el("div.sb-line", {}, [
-			el("span.sb-line__label", { text: label }),
-			el("span.sb-line__value", { text: String(value) }),
+	const chips = propertyChips(item.properties, item.mastery, item.edition);
+	if (!rows.length && !chips) return null;
+
+	return el("div.sb-core", {}, [
+		...rows.map(([label, value]) =>
+			el("div.sb-line", {}, [
+				el("span.sb-line__label", { text: label }),
+				el("span.sb-line__value", { text: String(value) }),
+			]),
+		),
+		chips && el("div.sb-line", {}, [
+			el("span.sb-line__label", { text: "Properties" }),
+			el("span.sb-line__value", {}, [chips]),
 		]),
-	));
+	].filter(Boolean));
 }
 
 /** Opens the entry a reference points at, or explains why it cannot. */

@@ -4,7 +4,7 @@
     {
       "name": "lowerlevels",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8123"],
+      "runtimeArgs": ["tools/dev-server.py", "8123"],
       "port": 8123
     }
   ]

@@ -3,18 +3,31 @@
  * the character roster, the wizard shell, and the level-up flow.
  */
 
-import { loadCore, db, getClass, getSubclass, filterEntries, ensure, addLocalHomebrew, localHomebrew, removeLocalHomebrew } from "./data.js";
+import { loadCore, db, getClass, getSubclass, filterEntries, ensure, addLocalHomebrew, localHomebrew, removeLocalHomebrew, setCustomItems } from "./data.js";
 import * as state from "./state.js";
 import { el, mount, section, field, modal, notice, toast, card, choiceList } from "./ui.js";
 import { relevantSteps, STEPS } from "./wizard.js";
 import { renderSheet } from "./sheet.js";
+import { renderSpellSheet } from "./spellsheet.js";
 import { installGlossary } from "./glossary.js";
+import { installDiceRoller } from "./dice.js";
+import { asiFeatOptions, featOptionsEditor, pendingSummary } from "./feats.js";
 import * as rules from "./rules.js";
 
 const root = document.getElementById("creator-root");
 
 let session = null;
 let currentStepIndex = 0;
+// Which step was on screen last time the wizard drew, and where it was scrolled
+// to. Every pick re-renders the whole step, so without this the view jumps back
+// to the top on each click.
+let lastRenderedStepId = null;
+// Which page of Play mode is open: the character sheet or the spell sheet.
+let playView = "character";
+// A section to scroll to and flash once the next wizard render lands. Set when
+// arriving from a "Change this" link, so the player is put in front of the exact
+// control they came to change rather than at the top of a long step.
+let pendingAnchor = null;
 
 /* ------------------------------------------------------------------ *
  * Boot
@@ -42,6 +55,8 @@ let currentStepIndex = 0;
 	// Highlighted terms in rules text become clickable everywhere, including
 	// inside modals, from this one listener.
 	installGlossary();
+	// Same for dice expressions: click "8d6" anywhere and it rolls.
+	installDiceRoller();
 
 	showRoster();
 })();
@@ -103,7 +118,7 @@ function rosterCard(char) {
 	return el("article.roster-card", {}, [
 		el("button.roster-card__main", {
 			type: "button",
-			onclick: () => openCharacter(char.id, "sheet"),
+			onclick: () => openCharacter(char.id, "play"),
 		}, [
 			el("h3.roster-card__name", { text: char.name || "Unnamed character" }),
 			el("p.roster-card__meta", {
@@ -115,8 +130,8 @@ function rosterCard(char) {
 		]),
 		el("div.roster-card__actions", {}, [
 			el("button.icon-btn", {
-				type: "button", text: "Edit", title: "Edit",
-				onclick: () => openCharacter(char.id, "wizard"),
+				type: "button", text: "Build", title: "Set up or level up",
+				onclick: () => openCharacter(char.id, "build"),
 			}),
 			el("button.icon-btn", {
 				type: "button", text: "Copy", title: "Duplicate",
@@ -309,16 +324,24 @@ function startNewCharacter() {
 	const settings = state.getSettings();
 	const char = state.newCharacter({ edition: settings.edition });
 	state.saveCharacter(char);
-	openCharacter(char.id, "wizard");
+	// A brand-new character has nothing to play yet, so start in Build mode.
+	openCharacter(char.id, "build");
 }
 
-function openCharacter(id, view) {
+function openCharacter(id, mode) {
 	const char = state.getCharacter(id);
 	if (!char) { showRoster(); return; }
 	session = state.createSession(char);
+	// Custom items are resolved by getItem, so the registry has to be filled
+	// before anything derives from the character, and refreshed whenever the
+	// list changes.
+	setCustomItems(char.customItems ?? []);
+	session.subscribe((c) => setCustomItems(c.customItems ?? []));
 	currentStepIndex = 0;
-	if (view === "sheet") showSheet();
-	else showWizard();
+	lastRenderedStepId = null;
+	playView = "character";
+	if (mode === "build") showWizard();
+	else showPlay();
 }
 
 /* ------------------------------------------------------------------ *
@@ -340,6 +363,14 @@ function showWizard() {
 		},
 	};
 
+	// Preserve the reading position and which sections were expanded. The whole
+	// step is rebuilt on every selection, so these have to be carried over by
+	// hand or the page snaps to the top and collapses everything.
+	const previousMain = root.querySelector(".wizard__main");
+	const previousScroll = previousMain ? previousMain.scrollTop : 0;
+	const wasSameStep = lastRenderedStepId === step.id;
+	const disclosureState = captureDisclosures(root);
+
 	const body = el("div.wizard__body", {}, step.render(ctx));
 
 	mount(root, el("div.screen.screen--wizard", {}, [
@@ -349,10 +380,15 @@ function showWizard() {
 				onclick: () => { session.saveNow(); showRoster(); },
 			}),
 			el("h2.wizard__charname", { text: char.name || "Unnamed character" }),
-			el("div.btn-row", {}, [
-				el("button.btn", {
-					type: "button", text: "View sheet",
-					onclick: () => { session.saveNow(); showSheet(); },
+			el("div.mode-switch", {}, [
+				el("button.mode-switch__btn.is-active", {
+					type: "button", text: "Build",
+					title: "Make choices and level up",
+				}),
+				el("button.mode-switch__btn", {
+					type: "button", text: "Play",
+					title: "Use the character at the table",
+					onclick: () => { session.saveNow(); showPlay(); },
 				}),
 			]),
 		]),
@@ -381,13 +417,120 @@ function showWizard() {
 					onclick: () => { currentStepIndex++; showWizard(); },
 				})
 				: el("button.btn.btn--primary", {
-					type: "button", text: "Finish",
-					onclick: () => { session.saveNow(); showSheet(); },
+					type: "button", text: "Done — play",
+					onclick: () => { session.saveNow(); showPlay(); },
 				}),
 		]),
 	]));
 
-	root.querySelector(".wizard__main")?.scrollTo({ top: 0 });
+	restoreDisclosures(root, disclosureState);
+
+	// Same step means the player just made a pick: keep them where they were.
+	// A different step is a deliberate move, so start at the top.
+	const main = root.querySelector(".wizard__main");
+	if (main) restoreScroll(main, wasSameStep ? previousScroll : 0);
+	lastRenderedStepId = step.id;
+
+	// An anchor overrides the restored position: it is why the player is here.
+	if (pendingAnchor && main) {
+		scrollToSection(main, pendingAnchor);
+		pendingAnchor = null;
+	}
+}
+
+/**
+ * Puts the scroll position back after a re-render.
+ *
+ * Setting scrollTop is not enough on its own: a step whose data is still loading
+ * mounts almost empty, and the browser clamps the value to what currently fits.
+ * So the target is re-applied for a few frames while late content arrives, and
+ * abandoned as soon as it sticks or the frames run out.
+ */
+function restoreScroll(main, target) {
+	main.scrollTop = target;
+	if (!target) return;
+
+	// setTimeout rather than requestAnimationFrame: rAF does not fire in a window
+	// that is not compositing, which would silently disable the retries.
+	let attempts = 0;
+	const settle = () => {
+		if (attempts++ > 20) return;
+		// Reached it, or the content genuinely is not that tall: stop.
+		if (main.scrollTop >= target) return;
+		if (main.scrollHeight - main.clientHeight >= target) main.scrollTop = target;
+		setTimeout(settle, 25);
+	};
+	setTimeout(settle, 0);
+}
+
+/**
+ * Scrolls a named section into view and flashes it.
+ *
+ * Sections are matched on their heading text, which keeps the deep-link contract
+ * to one string and means any step gains the behaviour for free -- no ids to
+ * thread through every picker. Steps whose content loads late are retried for a
+ * few frames, the same problem the scroll restore has.
+ *
+ * A near-miss match is accepted ("Fighting Style" finding "Fighting Style feat")
+ * because headings carry the class name in some steps.
+ */
+function scrollToSection(main, title) {
+	const wanted = String(title).toLowerCase();
+
+	const find = () => [...main.querySelectorAll(".step-section")].find((node) => {
+		const heading = node.querySelector(".step-section__title")?.textContent?.toLowerCase();
+		if (!heading) return false;
+		return heading === wanted || heading.includes(wanted) || wanted.includes(heading);
+	});
+
+	// The first attempt runs synchronously. Deferring everything to
+	// requestAnimationFrame means nothing happens at all in a window that is not
+	// compositing frames (a background tab, a hidden pane), and retries use
+	// setTimeout for the same reason.
+	let attempts = 0;
+	const attempt = () => {
+		const target = find();
+		if (target) {
+			// Measured with rects rather than offsetTop: the section's offsetParent
+			// is not necessarily the scroll container, so offset arithmetic can be
+			// off by whatever positioned wrapper sits between them.
+			// scrollIntoView is avoided because it would move the window too.
+			const targetTop = target.getBoundingClientRect().top;
+			const mainTop = main.getBoundingClientRect().top;
+			main.scrollTop = Math.max(0, main.scrollTop + targetTop - mainTop - 12);
+			target.classList.add("is-flash");
+			setTimeout(() => target.classList.remove("is-flash"), 1800);
+			return;
+		}
+		// Content that loads late gets a few more chances.
+		if (attempts++ < 20) setTimeout(attempt, 25);
+	};
+	attempt();
+}
+
+/**
+ * Records which <details> sections are open, keyed by their summary text.
+ *
+ * Spell lists and skill groups are disclosure widgets, and a re-render replaces
+ * the elements outright -- so an expanded "Level 3" section would silently
+ * collapse every time the player ticked a spell.
+ */
+function captureDisclosures(root) {
+	const state = new Map();
+	for (const details of root.querySelectorAll("details")) {
+		const key = details.querySelector("summary")?.textContent?.trim();
+		if (key) state.set(key, details.open);
+	}
+	return state;
+}
+
+/** Re-applies a captured disclosure state after the DOM has been rebuilt. */
+function restoreDisclosures(root, state) {
+	if (!state?.size) return;
+	for (const details of root.querySelectorAll("details")) {
+		const key = details.querySelector("summary")?.textContent?.trim();
+		if (key && state.has(key)) details.open = state.get(key);
+	}
 }
 
 function stepNav(steps, ctx) {
@@ -409,36 +552,88 @@ function stepNav(steps, ctx) {
 }
 
 /* ------------------------------------------------------------------ *
- * Sheet view
+ * Play mode
+ *
+ * Two modes, because they are two different jobs. Build mode is the wizard:
+ * making choices, levelling up, changing your mind. Play mode is what you keep
+ * open at the table -- everything already chosen, laid out to be used, with
+ * nothing to decide. Play mode has two pages, since a caster's spell list does
+ * not fit beside their armour class, and a real sheet keeps them separate too.
  * ------------------------------------------------------------------ */
 
-async function showSheet() {
+async function showPlay(view = playView) {
+	playView = view;
 	const char = session.character;
 
-	// The sheet shows spell names and companion stat blocks, both of which live
-	// in lazily-loaded files. Pull them first so nothing renders as a raw id.
+	// Both pages read from lazily-loaded files; pull what this character needs
+	// before drawing so nothing renders as a raw id.
 	const needed = [];
-	if (char.spells?.prepared?.length || char.spells?.cantrips?.length) needed.push(ensure("spells"));
+	if (rules.allChosenSpells(char).length || rules.spellcasting(char)) needed.push(ensure("spells"));
 	if (char.wildShapeForms?.length || Object.keys(char.companions ?? {}).length) needed.push(ensure("creatures"));
 	if (needed.length) {
 		mount(root, el("div.loading", {}, [el("div.loading__spinner"), el("p", { text: "Loading…" })]));
 		await Promise.all(needed);
 	}
 
-	mount(root, el("div.screen.screen--sheet", {}, [
-		el("header.sheet__nav.no-print", {}, [
+	const isCaster = Boolean(rules.spellcasting(char));
+
+	const sheetPage = renderSheet(session, {
+		onEdit: () => showWizard(),
+		onLevelUp: () => levelUpFlow(),
+		onEditStep: (stepId, anchorTitle) => openStep(stepId, anchorTitle),
+		onRerender: () => showPlay(playView),
+	});
+
+	// The spell page is always built for a caster, so Print emits both pages.
+	const spellPage = isCaster
+		? renderSpellSheet(session, {
+			onEditStep: (stepId, anchorTitle) => openStep(stepId, anchorTitle),
+			onRerender: () => showPlay(playView),
+		})
+		: null;
+
+	mount(root, el("div.screen.screen--play", {}, [
+		el("header.play__nav.no-print", {}, [
 			el("button.link-btn", {
 				type: "button", text: "← All characters",
 				onclick: () => { session.saveNow(); showRoster(); },
 			}),
-		]),
-		renderSheet(session, {
-			onEdit: () => showWizard(),
-			onLevelUp: () => levelUpFlow(),
-			onEditStep: (stepId) => openStep(stepId),
-		}),
-	]));
+			el("div.mode-switch", {}, [
+				el("button.mode-switch__btn", {
+					type: "button", text: "Build",
+					title: "Make choices and level up",
+					onclick: () => { session.saveNow(); showWizard(); },
+				}),
+				el("button.mode-switch__btn.is-active", {
+					type: "button", text: "Play",
+					title: "Use the character at the table",
+				}),
+			]),
+			isCaster && el("div.page-tabs", {}, [
+				el("button.page-tabs__btn", {
+					type: "button", text: "Character",
+					class: view === "character" ? "is-active" : "",
+					onclick: () => showPlay("character"),
+				}),
+				el("button.page-tabs__btn", {
+					type: "button", text: "Spells",
+					class: view === "spells" ? "is-active" : "",
+					onclick: () => showPlay("spells"),
+				}),
+			]),
+		].filter(Boolean)),
+
+		// Both pages stay in the DOM: CSS hides the inactive one on screen and
+		// shows both when printing, so one Print gives the full sheet.
+		el("div.play__page", { class: view === "character" ? "is-active" : "" }, [sheetPage]),
+		spellPage && el("div.play__page.play__page--spells", {
+			class: view === "spells" ? "is-active" : "",
+		}, [spellPage]),
+	].filter(Boolean)));
 }
+
+/** Kept for the older call sites; Play mode is the character sheet's home. */
+const showSheet = () => showPlay("character");
 
 /**
  * Open the wizard at a named step. Used by the "Change this" links on the sheet
@@ -446,10 +641,13 @@ async function showSheet() {
  * does not apply to this character (no spells on a Fighter), fall back to the
  * first step rather than landing on nothing.
  */
-function openStep(stepId) {
+function openStep(stepId, anchorTitle = null) {
 	const steps = relevantSteps(session.character);
 	const index = steps.findIndex((s) => s.id === stepId);
 	currentStepIndex = index === -1 ? 0 : index;
+	// Matched against section headings after the render, so a link can land on
+	// "Fighting Style" rather than the top of the Class step.
+	pendingAnchor = anchorTitle;
 	showWizard();
 }
 
@@ -483,7 +681,12 @@ function levelUpFlow() {
 		hpMode: "average",
 		hpRoll: null,
 		subclassId: entry.subclassId,
+		// An Ability Score Improvement can be spent on a feat instead, which is
+		// how most characters actually spend it.
+		asiMode: "scores",
 		asi: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+		featName: null,
+		featOptions: {},
 	};
 
 	const die = cls.hitDie ?? 8;
@@ -491,6 +694,64 @@ function levelUpFlow() {
 	const avg = rules.averageHpPerLevel(die);
 
 	const bodyHost = el("div");
+
+	/**
+	 * Choosing a feat, then answering whatever it asks.
+	 *
+	 * The options are edited against a preview of the character with the feat
+	 * already taken, so a question like Resilient's saving throw can grey out the
+	 * saves you already have.
+	 */
+	const featPicker = () => {
+		const options = asiFeatOptions(char, to);
+		if (!options.length) {
+			return notice("No feats available at this level in the loaded data.", "warn");
+		}
+
+		const preview = draft.featName
+			? {
+				...char,
+				feats: [...(char.feats ?? []), draft.featName],
+				featOptions: { ...(char.featOptions ?? {}), [draft.featName]: draft.featOptions },
+			}
+			: char;
+
+		const pending = draft.featName ? pendingSummary(preview, draft.featName) : null;
+
+		return el("div", {}, [
+			el("div.pick-grid.pick-grid--compact", {}, options.map((f) =>
+				card({
+					title: f.name,
+					subtitle: f.prerequisite ? `Requires ${f.prerequisite}` : null,
+					blurb: f.blurb,
+					meta: [f.srd ? "SRD" : f.source],
+					selected: draft.featName === f.name,
+					onSelect: () => {
+						draft.featName = f.name;
+						draft.featOptions = {};
+						renderBody();
+					},
+					onInfo: () => modal(f.name, el("div", {}, [
+						el("p.muted", {
+							text: [f.category, f.prerequisite ? `Requires ${f.prerequisite}` : null, f.source]
+								.filter(Boolean).join(" · "),
+						}),
+						el("div", { html: f.html ?? "" }),
+					])),
+				}),
+			)),
+
+			// Everything the chosen feat still needs.
+			draft.featName && el("div.feat-detail", {}, [
+				el("h4", { text: draft.featName }),
+				featOptionsEditor(preview, draft.featName, {
+					abilities: db.rules?.abilities ?? [],
+					onChange: (next) => { draft.featOptions = next; renderBody(); },
+				}),
+				pending && notice(pending, "warn"),
+			].filter(Boolean)),
+		].filter(Boolean));
+	};
 
 	const renderBody = () => {
 		const gained = draft.hpMode === "roll"
@@ -559,22 +820,41 @@ function levelUpFlow() {
 				)),
 			),
 
-			// Ability score improvement
+			// Ability Score Improvement, or a feat in its place.
 			grantsAsi && section("Ability Score Improvement",
-				"Raise one ability by 2, or two abilities by 1 each. Taking a feat instead is on the Class step.",
-				el("div.assign-grid", {}, (db.rules?.abilities ?? []).map((a) =>
-					field(a.name,
-						el("input.assign-input", {
-							type: "number", min: 0, max: 2, value: draft.asi[a.id],
-							oninput: (e) => { draft.asi[a.id] = Number(e.target.value) || 0; renderBody(); },
+				"Raise your scores, or take a feat instead.",
+				[
+					el("div.mode-switch", {}, [
+						el("button.mode-switch__btn", {
+							type: "button", text: "Raise scores",
+							class: draft.asiMode === "scores" ? "is-active" : "",
+							onclick: () => { draft.asiMode = "scores"; renderBody(); },
 						}),
-					),
-				)),
-			),
+						el("button.mode-switch__btn", {
+							type: "button", text: "Take a feat",
+							class: draft.asiMode === "feat" ? "is-active" : "",
+							onclick: () => { draft.asiMode = "feat"; renderBody(); },
+						}),
+					]),
 
-			grantsAsi && el("p.muted", {
-				text: `Allocated ${Object.values(draft.asi).reduce((x, y) => x + y, 0)} of 2 points.`,
-			}),
+					draft.asiMode === "scores"
+						? el("div", {}, [
+							el("p.muted", { text: "Raise one ability by 2, or two abilities by 1 each." }),
+							el("div.assign-grid", {}, (db.rules?.abilities ?? []).map((a) =>
+								field(a.name,
+									el("input.assign-input", {
+										type: "number", min: 0, max: 2, value: draft.asi[a.id],
+										oninput: (e) => { draft.asi[a.id] = Number(e.target.value) || 0; renderBody(); },
+									}),
+								),
+							)),
+							el("p.muted", {
+								text: `Allocated ${Object.values(draft.asi).reduce((x, y) => x + y, 0)} of 2 points.`,
+							}),
+						])
+						: featPicker(),
+				],
+			),
 		].filter(Boolean)));
 	};
 
@@ -587,8 +867,11 @@ function levelUpFlow() {
 				type: "button", text: `Confirm level ${to}`,
 				onclick: () => {
 					const asiTotal = Object.values(draft.asi).reduce((x, y) => x + y, 0);
-					if (grantsAsi && asiTotal > 2) { toast("An ASI grants only 2 points."); return; }
+					const takingFeat = grantsAsi && draft.asiMode === "feat";
+
+					if (grantsAsi && !takingFeat && asiTotal > 2) { toast("An ASI grants only 2 points."); return; }
 					if (needsSubclass && !draft.subclassId) { toast("Choose a subclass first."); return; }
+					if (takingFeat && !draft.featName) { toast("Choose a feat, or switch back to raising scores."); return; }
 
 					const rolled = draft.hpMode === "roll" ? draft.hpRoll
 						: draft.hpMode === "max" ? die : null;
@@ -605,9 +888,23 @@ function levelUpFlow() {
 						nextClasses[0] = e0;
 
 						const asiNext = { ...c.asiBonuses };
-						for (const [k, v] of Object.entries(draft.asi)) asiNext[k] = (asiNext[k] ?? 0) + v;
+						// Only one of the two applies: scores or a feat.
+						if (!takingFeat) {
+							for (const [k, v] of Object.entries(draft.asi)) asiNext[k] = (asiNext[k] ?? 0) + v;
+						}
 
-						return { ...c, classes: nextClasses, asiBonuses: asiNext };
+						const feats = takingFeat ? [...(c.feats ?? []), draft.featName] : (c.feats ?? []);
+						const featOptions = takingFeat
+							? { ...(c.featOptions ?? {}), [draft.featName]: draft.featOptions }
+							: (c.featOptions ?? {});
+						const featLevels = takingFeat
+							? { ...(c.featLevels ?? {}), [draft.featName]: to }
+							: (c.featLevels ?? {});
+
+						return {
+							...c, classes: nextClasses, asiBonuses: asiNext,
+							feats, featOptions, featLevels,
+						};
 					});
 
 					session.saveNow();

@@ -49,20 +49,60 @@ export function newCharacter(overrides = {}) {
 		// the flat set from these plus the fixed grants.
 		skillChoices: { class: [], species: [], feat: [] },
 		extraSkills: [], // added by hand on the sheet
-		expertise: [],
+		expertise: [], // added by hand
+		// Expertise assigned against a feature that grants it, keyed by
+		// "classId:Feature:level" so a Rogue's level 1 and level 6 grants stay
+		// separate. See rules.expertiseGrants.
+		expertiseChoices: {},
+		// Deliberate departures from what the builder worked out, keyed by skill
+		// id: "none" | "proficient" | "expert". Anything absent follows the build.
+		skillOverrides: {},
 		toolProficiencies: [],
+		// Languages, tracked by where each choice came from so a duplicate can be
+		// spotted the same way a duplicate skill is. `languages` stays as the
+		// by-hand list for anything a DM simply grants.
 		languages: [],
+		languageChoices: { origin: [], species: [], background: [], feat: {} },
 		// Feats chosen for a species trait, keyed by that trait's choice id.
 		featChoices: {},
 		feats: [], // feats taken at level-up, by name
+		// The level each feat was taken at, so the timeline can place it.
+		featLevels: {},
+		// The decisions a feat required, keyed by feat name:
+		//   { ability: {con:1}, saves: ["con"], skills: [...], variant, spells: {} }
+		featOptions: {},
 		optionalFeaturePicks: [], // fighting styles, invocations, maneuvers, metamagic
 
 		equipment: [], // [{ itemId, name, quantity, equipped, notes }]
+		// Items a DM invented, kept with the character that was given them.
+		// Same shape as a database item, so everything downstream treats them
+		// alike; see customitems.js.
+		customItems: [],
 		currency: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
 
-		spells: { cantrips: [], known: [], prepared: [] },
+		// Spells are kept PER CLASS: a Cleric 3 / Wizard 2 prepares Cleric spells
+		// against the Cleric table and Wizard spells against the Wizard table,
+		// even though both draw on one shared pool of slots.
+		spellsByClass: {}, // { [classId]: { cantrips: [], prepared: [], known: [] } }
+		// Slot expenditure, for use at the table. Keyed by slot level as a string.
+		spellSlotsUsed: {}, // { "1": 2, "3": 1 }
+		pactSlotsUsed: 0,
 
-		hp: { current: null, temp: 0, overrideMax: null },
+		// Table-side expenditure, all reset by the rest buttons in Play mode.
+		// Hit dice are grouped by die size ({ d10: 2 }) because that is how they
+		// are spent; feature uses are keyed "classId:Feature Name" so a
+		// Cleric/Paladin tracks two Channel Divinity pools rather than one.
+		hitDiceUsed: {}, // { "d10": 2 }
+		resourcesUsed: {}, // { "fighter--xphb:Second Wind": 1 }
+		// A short-rest log, so the sheet can show what the last rest restored.
+		lastRest: null, // { kind: "short" | "long", at: ISO string }
+		// Which variant of a subclass's granted spell list applies, keyed by class
+		// id -- the 2024 Circle of the Land picks a terrain, for instance.
+		spellVariants: {},
+
+		// bonusMax adds to the derived maximum; overrideMax replaces it outright.
+		// adjustBy is the step the +/- buttons on the sheet use.
+		hp: { current: null, temp: 0, overrideMax: null, bonusMax: 0, adjustBy: 1 },
 		acOverride: null,
 		customEffects: [],
 
@@ -211,10 +251,35 @@ export function migrate(char) {
 	merged.details = { ...base.details, ...(char.details ?? {}) };
 	merged.hp = { ...base.hp, ...(char.hp ?? {}) };
 	merged.currency = { ...base.currency, ...(char.currency ?? {}) };
-	merged.spells = { ...base.spells, ...(char.spells ?? {}) };
+	merged.spellsByClass = { ...base.spellsByClass, ...(char.spellsByClass ?? {}) };
+	merged.spellSlotsUsed = { ...base.spellSlotsUsed, ...(char.spellSlotsUsed ?? {}) };
+	merged.hitDiceUsed = { ...base.hitDiceUsed, ...(char.hitDiceUsed ?? {}) };
+	merged.customItems = [...(char.customItems ?? [])];
+	merged.resourcesUsed = { ...base.resourcesUsed, ...(char.resourcesUsed ?? {}) };
+	merged.spellVariants = { ...base.spellVariants, ...(char.spellVariants ?? {}) };
+	// Characters saved before spells were tracked per class have one flat list.
+	// Attach it to the first class so nothing is lost.
+	if (char.spells && !Object.keys(char.spellsByClass ?? {}).length) {
+		const firstClassId = char.classes?.[0]?.classId;
+		if (firstClassId) {
+			merged.spellsByClass = {
+				[firstClassId]: {
+					cantrips: char.spells.cantrips ?? [],
+					prepared: char.spells.prepared ?? [],
+					known: char.spells.known ?? [],
+				},
+			};
+		}
+	}
+	delete merged.spells;
 	merged.skillChoices = { ...base.skillChoices, ...(char.skillChoices ?? {}) };
+	merged.languageChoices = { ...base.languageChoices, ...(char.languageChoices ?? {}) };
+	merged.expertiseChoices = { ...base.expertiseChoices, ...(char.expertiseChoices ?? {}) };
+	merged.skillOverrides = { ...base.skillOverrides, ...(char.skillOverrides ?? {}) };
 	merged.houseRules = { ...base.houseRules, ...(char.houseRules ?? {}) };
 	merged.featChoices = { ...base.featChoices, ...(char.featChoices ?? {}) };
+	merged.featOptions = { ...base.featOptions, ...(char.featOptions ?? {}) };
+	merged.featLevels = { ...base.featLevels, ...(char.featLevels ?? {}) };
 	// Characters saved before skills were source-tracked carry a flat list.
 	// Keep those proficiencies by treating them as manual additions.
 	if (Array.isArray(char.skillProficiencies) && char.skillProficiencies.length

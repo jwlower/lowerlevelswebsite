@@ -286,8 +286,26 @@ export const getSpecies = (id) => byId(db.species, id);
 export const getClass = (id) => byId(db.classes, id);
 export const getBackground = (id) => byId(db.backgrounds, id);
 export const getFeat = (id) => byId(db.feats, id);
+/**
+ * Items a DM handed out, belonging to the character rather than the database.
+ *
+ * They are registered here rather than passed around because `getItem` is
+ * reached from a dozen places -- attacks, armour class, the equipment list, the
+ * item popovers -- and none of them have the character to hand. Registering the
+ * open character's items means every one of those paths treats a custom item
+ * exactly like a printed one, with no special cases.
+ */
+let customRegistry = [];
+
+/** Called when a character is opened, and again whenever its items change. */
+export function setCustomItems(items) {
+	customRegistry = Array.isArray(items) ? items : [];
+}
+
 export const getItem = (id) =>
-	byId(db.equipment, id) ?? (db.magicItems ? byId(db.magicItems, id) : null);
+	byId(customRegistry, id)
+	?? byId(db.equipment, id)
+	?? (db.magicItems ? byId(db.magicItems, id) : null);
 
 /**
  * Generated magic items ("Flame Tongue Longsword") carry a pointer to their

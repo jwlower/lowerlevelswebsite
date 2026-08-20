@@ -8,9 +8,14 @@
  */
 
 import { db, getSpecies, getClass, getBackground, getSubclass, getItem, getItemByRef, filterEntries, ensure, allSkills, skillById, itemDescription } from "./data.js";
-import { el, card, section, field, modal, rulesHtml, notice, choiceList, toast, gp, debounce } from "./ui.js";
+import { el, card, section, field, modal, rulesHtml, notice, choiceList, toast, gp, debounce, statBox, infoButton, itemLink, refLink } from "./ui.js";
 import * as rules from "./rules.js";
 import { creatureRefLinks, statBlock, findCreature, creatureSubtitle, showCreature } from "./statblock.js";
+import { showSpell, showReference } from "./glossary.js";
+import {
+	isUnpackable, unpack, packSummary, sellDialog, groupChoiceDialog,
+	customItemList, itemValueGp,
+} from "./items.js";
 
 /* ------------------------------------------------------------------ *
  * Shared helpers
@@ -95,6 +100,8 @@ function skillPicker(ctx, { bucket, title, choice, hint }) {
 				}));
 				ctx.rerender();
 			},
+			// Skills have glossary entries, so they get an explanation too.
+			onInfo: (opt) => showReference(`skill|${skillById(opt.id)?.name ?? opt.label}|`),
 		}),
 		el("label.house-rule-toggle", {}, [
 			el("input", {
@@ -415,14 +422,9 @@ function optionalFeaturePicker(ctx, prog, count, categories) {
 					session.update((c) => ({ ...c, optionalFeaturePicks: [...others, ...names] }));
 					ctx.rerender();
 				},
+				// A "?" on each row, instead of a list of links underneath.
+				onInfo: (opt) => modal(opt.label, rulesHtml(opt.html)),
 			}),
-			el("div.pick-help", {}, options.slice(0, 100).map((o) =>
-				el("button.link-btn", {
-					type: "button",
-					text: `What is ${o.label}?`,
-					onclick: () => modal(o.label, rulesHtml(o.html)),
-				}),
-			)),
 		);
 	})();
 
@@ -636,6 +638,98 @@ function showSpeciesDetail(sp) {
  * Step 3 - Background
  * ------------------------------------------------------------------ */
 
+/**
+ * The languages section.
+ *
+ * It lives on the Background step because that is where languages come from in
+ * both editions -- 2014 through species and background, 2024 through the origin
+ * rules that the background step already explains.
+ *
+ * Every grant is listed with where it came from, and a language already known
+ * cannot be chosen again: taking Elvish twice because the species gave it and
+ * the background offered it is the classic wasted pick.
+ */
+function languageSection(ctx) {
+	const { session } = ctx;
+	const char = session.character;
+	const state = rules.languages(char);
+
+	const pool = (db.reference?.languages ?? [])
+		.filter((l) => !l.edition || l.edition === (char.edition ?? "2024"))
+		// Standard languages first; the rare and exotic ones still appear, since a
+		// DM may well allow them.
+		.sort((a, b) => {
+			const rank = (x) => (x.type === "standard" ? 0 : x.type === "rare" || x.type === "exotic" ? 1 : 2);
+			return rank(a) - rank(b) || a.name.localeCompare(b.name);
+		});
+
+	const known = new Set(state.known.map((l) => l.name.toLowerCase()));
+
+	const nodes = [
+		// What is already spoken, and why.
+		el("div.lang-known", {}, state.known.length
+			? state.known.map((l) =>
+				el("span.lang-chip", {}, [
+					refLink(l.name, `language|${l.name}|`),
+					el("span.lang-chip__src", { text: l.source }),
+				]))
+			: [el("span.muted", { text: "None yet." })]),
+	];
+
+	// One picker per outstanding grant.
+	for (const grant of state.pending) {
+		const picked = grant.bucket.startsWith("feat:")
+			? (char.languageChoices?.feat?.[grant.bucket.slice(5)] ?? [])
+			: (char.languageChoices?.[grant.bucket] ?? []);
+
+		const write = (ids) => {
+			session.update((c) => {
+				const lc = { ...(c.languageChoices ?? {}) };
+				if (grant.bucket.startsWith("feat:")) {
+					lc.feat = { ...(lc.feat ?? {}), [grant.bucket.slice(5)]: ids };
+				} else {
+					lc[grant.bucket] = ids;
+				}
+				return { ...c, languageChoices: lc };
+			});
+			ctx.rerender();
+		};
+
+		nodes.push(section(
+			`${grant.source}: choose ${grant.total} language${grant.total === 1 ? "" : "s"}`,
+			grant.count < grant.total
+				? `${grant.count} still to choose.`
+				: null,
+			choiceList({
+				options: pool.map((l) => ({
+					id: l.name,
+					label: l.name,
+					hint: known.has(l.name.toLowerCase()) && !picked.includes(l.name)
+						? "already known"
+						: (l.type ?? ""),
+				})),
+				selected: picked,
+				max: grant.total,
+				// Known languages are shown greyed rather than hidden, so it is clear
+				// why they cannot be taken again.
+				disabledIds: new Set(
+					[...known]
+						.map((lower) => pool.find((l) => l.name.toLowerCase() === lower)?.name)
+						.filter((nm) => nm && !picked.includes(nm)),
+				),
+				onChange: write,
+				onInfo: (opt) => showReference(`language|${opt.label}|`),
+			}),
+		));
+	}
+
+	if (!state.pending.length) {
+		nodes.push(el("p.muted", { text: "Nothing left to choose." }));
+	}
+
+	return nodes;
+}
+
 const backgroundStep = {
 	id: "background",
 	title: "Background",
@@ -723,6 +817,14 @@ const backgroundStep = {
 			}
 		}
 
+		// Languages are part of your origin in both editions, so they belong here
+		// rather than on a step of their own.
+		nodes.push(section("Languages",
+			(char.edition ?? "2024") === "2024"
+				? "Every character speaks Common plus two more languages of their choice. Species and backgrounds grant no languages under the 2024 rules."
+				: "Your species and background decide these.",
+			languageSection(ctx)));
+
 		return nodes;
 	},
 
@@ -781,6 +883,7 @@ function toolProficiencySections(ctx, owner) {
 					session.update((c) => ({ ...c, toolProficiencies: [...others, ...names] }));
 					ctx.rerender();
 				},
+				onInfo: (opt) => showReference(`item|${opt.label}|`),
 			}));
 		})();
 	}
@@ -1282,7 +1385,7 @@ const equipmentStep = {
 								ctx.rerender();
 							},
 						}),
-						el("span.inventory__name", { text: entry.name }),
+						el("span.inventory__name", {}, [itemLink(entry.name)]),
 						el("label.inventory__equip", {}, [
 							el("input", {
 								type: "checkbox", checked: Boolean(entry.equipped),
@@ -1319,8 +1422,35 @@ const equipmentStep = {
 							}),
 							el("span", { text: "attuned" }),
 						]),
+						// A pack is a shopping convenience: open it up into the things
+						// actually inside it.
+						isUnpackable(entry) && el("button.inventory__act", {
+							type: "button", text: "unpack",
+							title: `Replace with its contents: ${packSummary(entry)}`,
+							onclick: () => {
+								session.update((c) => unpack(c, i));
+								toast(`${entry.name} unpacked.`);
+								ctx.rerender();
+							},
+						}),
+
+						// "A Holy Symbol" needs to become an Amulet, Emblem or Reliquary.
+						itemFor(entry)?.isGroup && el("button.inventory__act", {
+							type: "button", text: "choose",
+							title: `Pick which ${entry.name} you carry`,
+							onclick: () => groupChoiceDialog(session, i, () => ctx.rerender()),
+						}),
+
+						el("button.inventory__act", {
+							type: "button", text: "sell",
+							title: itemValueGp(entry)
+								? `Listed at ${itemValueGp(entry)} gp each`
+								: "No listed price; sell at a figure you set",
+							onclick: () => sellDialog(session, i, () => ctx.rerender()),
+						}),
+
 						el("button.inventory__remove", {
-							type: "button", text: "×", title: "Remove",
+							type: "button", text: "×", title: "Remove without selling",
 							onclick: () => {
 								session.update((c) => ({
 									...c,
@@ -1339,6 +1469,10 @@ const equipmentStep = {
 		nodes.push(section("Magic items and full item list",
 			"Searches everything, magic and mundane, across both editions. Attuned items are capped at three.",
 			magicItemSearch(ctx)));
+
+		nodes.push(section("Items your DM invented",
+			"Anything made here belongs to this character, and behaves like a printed item: it can be equipped, attacked with, sold, and its uses are tracked with your class features.",
+			customItemList(session, () => ctx.rerender())));
 
 		nodes.push(section("Money", null,
 			el("div.currency-row", {}, (db.rules?.currencies ?? []).map((cur) =>
@@ -1379,26 +1513,35 @@ function gripControl(ctx, entry, index) {
 	const props = (item.properties ?? []).map((p) => p.toLowerCase());
 	if (!props.includes("versatile")) return null;
 
-	const grip = rules.gripFor(entry, item);
+	const hasShield = rules.shieldInHand(session.character);
+	const grip = rules.gripFor(entry, item, { hasShield });
 
-	return el("div.grip-toggle", {}, ["one-handed", "two-handed"].map((option) =>
-		el("button.grip-toggle__btn", {
-			type: "button",
-			class: grip === option ? "is-active" : "",
-			text: option === "one-handed" ? `1H ${item.damage}` : `2H ${item.versatileDamage}`,
-			title: option === "one-handed"
-				? "Held in one hand: leaves a hand free and enables Dueling"
-				: "Held in two hands: bigger damage die and enables Great Weapon Fighting",
-			onclick: () => {
-				session.update((c) => {
-					const next = [...c.equipment];
-					next[index] = { ...next[index], grip: option };
-					return { ...c, equipment: next };
-				});
-				ctx.rerender();
-			},
+	return el("div.grip-toggle", {}, [
+		...["one-handed", "two-handed"].map((option) => {
+			// A shield fills the off hand, so two-handed is not a real option.
+			const blocked = hasShield && option === "two-handed";
+			return el("button.grip-toggle__btn", {
+				type: "button",
+				class: [grip === option ? "is-active" : "", blocked ? "is-blocked" : ""].filter(Boolean).join(" "),
+				disabled: blocked,
+				text: option === "one-handed" ? `1H ${item.damage}` : `2H ${item.versatileDamage}`,
+				title: blocked
+					? "Not while a shield is in your off hand"
+					: option === "one-handed"
+						? "Held in one hand: leaves a hand free and enables Dueling"
+						: "Held in two hands: bigger damage die and enables Great Weapon Fighting",
+				onclick: () => {
+					session.update((c) => {
+						const next = [...c.equipment];
+						next[index] = { ...next[index], grip: option };
+						return { ...c, equipment: next };
+					});
+					ctx.rerender();
+				},
+			});
 		}),
-	));
+		hasShield && el("span.grip-toggle__note", { text: "shield in off hand" }),
+	].filter(Boolean));
 }
 
 /** Type-ahead over the equipment list. */
@@ -1568,144 +1711,418 @@ function buildMagicSearch(ctx) {
 const spellsStep = {
 	id: "spells",
 	title: "Spells",
-	blurb: "Your cantrips and prepared spells.",
+	blurb: "Your cantrips and prepared spells, per casting class.",
 
 	isRelevant(char) {
-		const entry = classEntry(char);
-		const cls = getClass(entry?.classId);
-		const sub = getSubclass(entry?.classId, entry?.subclassId);
-		return Boolean(cls?.casterProgression || sub?.casterProgression);
+		return Boolean(rules.spellcasting(char));
 	},
 
 	render(ctx) {
-		const { session } = ctx;
-		const char = session.character;
-		const cls = getClass(classEntry(char)?.classId);
-		const sc = rules.spellcasting(char);
+		// Render synchronously whenever the spell file is already cached, which it
+		// is on every re-render after the first. An async placeholder would leave
+		// the step momentarily empty, and a container with no content cannot hold
+		// a scroll position -- so picking a spell would jump the page to the top.
+		if (db.spells) return buildSpellStep(ctx, db.spells);
 
-		const container = el("div", {}, [el("p.muted", { text: "Loading spells…" })]);
-
+		const host = el("div", {}, [el("p.muted", { text: "Loading spells…" })]);
 		(async () => {
 			const spells = await ensure("spells");
-			const classSlug = cls?.name?.toLowerCase();
-			const pool = filterEntries(spells, editionOpts(char))
-				.filter((s) => (s.classes ?? []).includes(classSlug));
-
-			const cantrips = pool.filter((s) => s.level === 0);
-			const leveled = pool.filter((s) => s.level > 0);
-
-			const nodes = [];
-
-			if (sc) {
-				nodes.push(section("Spellcasting", null,
-					el("div.stat-strip", {}, [
-						statBox("Save DC", sc.classes[0]?.saveDc ?? "—"),
-						statBox("Attack", rules.formatMod(sc.classes[0]?.attackBonus ?? 0)),
-						statBox("Ability", (sc.classes[0]?.ability ?? "").toUpperCase()),
-						sc.classes[0]?.preparedCount != null && statBox("Prepared", sc.classes[0].preparedCount),
-					].filter(Boolean)),
-				));
-
-				if (sc.slots?.length) {
-					nodes.push(section("Spell slots", null,
-						el("div.slot-row", {}, sc.slots.map((n, i) =>
-							el("div.slot-box", {}, [
-								el("span.slot-box__level", { text: `L${i + 1}` }),
-								el("span.slot-box__count", { text: n }),
-							]),
-						)),
-					));
-				}
-				if (sc.pactMagic) {
-					nodes.push(notice(`Pact Magic: ${sc.pactMagic.count} slots at level ${sc.pactMagic.level}, recharged on a short rest.`));
-				}
-			}
-
-			nodes.push(spellPicker(ctx, "Cantrips", cantrips, "cantrips"));
-			nodes.push(spellPicker(ctx, "Spells", leveled, "prepared"));
-
-			if (!pool.length) {
-				nodes.push(notice(`No spells found for ${cls?.name} in the ${char.edition} data.`, "warn"));
-			}
-
-			container.replaceChildren(...nodes.filter(Boolean));
+			host.replaceChildren(...buildSpellStep(ctx, spells));
 		})();
-
-		return [container];
+		return [host];
 	},
 
-	isComplete: () => true,
+	isComplete(char) {
+		const sc = rules.spellcasting(char);
+		if (!sc) return true;
+		// Complete once every class has filled its cantrip and prepared quota.
+		return sc.classes.every((c) => {
+			const chosen = rules.classSpells(char, c.classId);
+			const cantripsOk = c.cantripsKnown == null || chosen.cantrips.length >= c.cantripsKnown;
+			const limit = c.preparedLimit ?? c.spellsKnownLimit;
+			const preparedOk = limit == null || chosen.prepared.length >= limit;
+			const bookOk = c.spellbookLimit == null || chosen.known.length > 0;
+			return cantripsOk && preparedOk && bookOk;
+		});
+	},
 };
 
-const statBox = (label, value) =>
-	el("div.stat-box", {}, [
-		el("span.stat-box__label", { text: label }),
-		el("span.stat-box__value", { text: value }),
-	]);
+/** Builds the Spells step. Split out so it can run synchronously once cached. */
+function buildSpellStep(ctx, spells) {
+	const char = ctx.session.character;
+	const sc = rules.spellcasting(char);
+	if (!sc) return [notice("This character has no spellcasting.", "warn")];
 
-function spellPicker(ctx, title, pool, bucket) {
+	const nodes = [
+		slotOverview(sc),
+		...spellVariantSections(ctx),
+		grantedSpellSection(char),
+	].filter(Boolean);
+
+	// One block per casting class, each with its own limits and list.
+	for (const caster of sc.classes) {
+		nodes.push(...classSpellSection(ctx, spells, caster, sc));
+	}
+	return nodes.filter(Boolean);
+}
+
+/** Shared slot pool, shown once above the per-class lists. */
+function slotOverview(sc) {
+	const rows = [];
+
+	if (sc.slots.length) {
+		rows.push(el("div.slot-row", {}, sc.slots.map((n, i) =>
+			el("div.slot-box", {}, [
+				el("span.slot-box__level", { text: `L${i + 1}` }),
+				el("span.slot-box__count", { text: n }),
+			]),
+		)));
+	}
+
+	if (sc.pact) {
+		rows.push(el("p.muted", {
+			text: `Pact Magic (${sc.pact.className}): ${sc.pact.count} slot${sc.pact.count === 1 ? "" : "s"} `
+				+ `at level ${sc.pact.level}, recovered on a Short Rest. This is a separate pool.`,
+		}));
+	}
+
+	const hint = sc.multiclass
+		? `Multiclassed caster: effective caster level ${sc.effectiveCasterLevel}. `
+			+ "Slots are shared across all your casting classes, but each class prepares from its own list."
+		: "Slots refresh on a Long Rest.";
+
+	return section("Spell slots", hint, rows.length ? rows : notice("No spell slots at this level.", "warn"));
+}
+
+/**
+ * Picks between the variants of a subclass's granted spell list.
+ *
+ * The 2024 Circle of the Land grants a different set per terrain, so until a
+ * terrain is chosen the app cannot say which spells the Druid actually has.
+ */
+function spellVariantSections(ctx) {
 	const { session } = ctx;
 	const char = session.character;
-	const chosen = new Set(char.spells?.[bucket] ?? []);
+
+	return rules.spellVariantChoices(char).map((choice) =>
+		section(`${choice.sourceName} spell list`,
+			"Choose which list applies. It decides the spells you always have prepared.",
+			[
+				!choice.chosen && notice("Not chosen yet, so no spells are granted.", "warn"),
+				el("div.btn-row", {}, choice.variants.map((name) =>
+					el("button.toggle-btn", {
+						type: "button",
+						class: choice.chosen === name ? "is-active" : "",
+						text: name,
+						onclick: () => {
+							session.update((c) => ({
+								...c,
+								spellVariants: { ...(c.spellVariants ?? {}), [choice.classId]: name },
+							}));
+							ctx.rerender();
+						},
+					}),
+				)),
+			].filter(Boolean),
+		),
+	);
+}
+
+/**
+ * Spells the character already has for free, with a clickable source badge.
+ *
+ * This sits above the pickers deliberately: seeing "Prestidigitation (S)" here
+ * first is what stops a player spending one of their own cantrip picks on a
+ * spell their species already gave them.
+ */
+function grantedSpellSection(char) {
+	const granted = rules.grantedSpells(char);
+	if (!granted.length) return null;
+
+	const available = granted.filter((g) => g.available);
+	const later = granted.filter((g) => !g.available);
+
+	const row = (g) => el("span.granted-spell", {}, [
+		el("button.spell-link", {
+			type: "button", text: g.name, title: `Read ${g.name}`,
+			onclick: () => showSpell(g.id ?? g.name),
+		}),
+		// The badge names the origin and opens it.
+		g.ref && el("button.granted-spell__badge", {
+			type: "button",
+			text: sourceBadge(g.ref),
+			title: `From ${g.source} — click to read`,
+			onclick: () => showReference(g.ref),
+		}),
+		el("span.granted-spell__from", {
+			text: grantLabel(g),
+		}),
+	].filter(Boolean));
+
+	return section("Spells you already have",
+		"Granted by your species, background, feats, or your domain, oath or circle. "
+		+ "These do not count against your cantrips known or prepared limits, so you "
+		+ "do not need to pick them again. S species · B background · F feat · D subclass.",
+		[
+			available.length > 0 && el("div.granted-list", {}, available.map(row)),
+			later.length > 0 && el("div", {}, [
+				el("p.muted", { text: "Unlocks as you level:" }),
+				el("div.granted-list", {}, later.map((g) => el("span.granted-spell.is-locked", {}, [
+					el("span.spell-link", { text: g.name }),
+					el("span.granted-spell__from", { text: `${g.source} · level ${g.unlockLevel}` }),
+				]))),
+			]),
+		].filter(Boolean),
+	);
+}
+
+/**
+ * A one-letter badge for where a granted spell came from.
+ *   S species · B background · F feat · C class · D subclass (domain/oath/circle)
+ */
+function sourceBadge(ref) {
+	const tag = String(ref ?? "").split("|")[0];
+	if (tag === "race") return "S";
+	if (tag === "feat") return "F";
+	if (tag === "background") return "B";
+	if (tag === "class") return "C";
+	if (tag === "subclassFeature" || tag === "classFeature") return "D";
+	return "?";
+}
+
+/** "Life Domain" or "Fey Wanderer · 1/day each", so the terms are not lost. */
+function grantLabel(g) {
+	const extras = [
+		g.kind && g.kind !== "prepared" ? g.kind : null,
+		g.note ?? null,
+	].filter(Boolean);
+	return extras.length ? `${g.source} · ${extras.join(" ")}` : g.source;
+}
+
+/** Cantrip and spell pickers for one casting class. */
+function classSpellSection(ctx, allSpells, caster, sc) {
+	const { session } = ctx;
+	const char = session.character;
+	const classSlug = caster.className.toLowerCase();
+
+	const pool = filterEntries(allSpells, editionOpts(char))
+		.filter((sp) => (sp.classes ?? []).includes(classSlug));
+
+	const chosen = rules.classSpells(char, caster.classId);
+	const nodes = [];
+
+	const title = caster.subclassName
+		? `${caster.className} (${caster.subclassName})`
+		: caster.className;
+
+	nodes.push(section(`${title} spellcasting`, null,
+		el("div.stat-strip", {}, [
+			statBox("Save DC", caster.saveDc),
+			statBox("Attack", rules.formatMod(caster.attackBonus)),
+			statBox("Ability", caster.ability.toUpperCase()),
+			caster.cantripsKnown != null && statBox("Cantrips", `${chosen.cantrips.length}/${caster.cantripsKnown}`),
+			caster.spellbookLimit != null
+				&& statBox("Spellbook", `${chosen.known.length}/${caster.spellbookLimit}`),
+			(caster.preparedLimit ?? caster.spellsKnownLimit) != null
+				&& statBox(caster.preparedLimit != null ? "Prepared" : "Known",
+					`${chosen.prepared.length}/${caster.preparedLimit ?? caster.spellsKnownLimit}`),
+		].filter(Boolean)),
+	));
+
+	if (!pool.length) {
+		nodes.push(notice(`No ${caster.className} spells found in the ${char.edition} data.`, "warn"));
+		return nodes;
+	}
+
+	// Cantrips are always available and do not use slots.
+	const cantrips = pool.filter((sp) => sp.level === 0);
+	if (cantrips.length && caster.cantripsKnown) {
+		nodes.push(spellPicker(ctx, {
+			classId: caster.classId,
+			bucket: "cantrips",
+			title: `${caster.className} cantrips`,
+			limit: caster.cantripsKnown,
+			spells: cantrips,
+			hint: "Always available, and they do not spend a slot.",
+		}));
+	}
+
+	// Levelled spells, capped at the highest slot level available.
+	const maxLevel = Math.max(
+		sc.slots.length,
+		sc.pact && caster.isPact ? sc.pact.level : 0,
+	);
+	const levelled = pool.filter((sp) => sp.level > 0 && sp.level <= Math.max(1, maxLevel));
+	const limit = caster.preparedLimit ?? caster.spellsKnownLimit;
+
+	// A Wizard learns spells into a spellbook first and prepares only from it.
+	// Every other class prepares straight from the class list.
+	if (caster.spellbookLimit != null) {
+		nodes.push(spellPicker(ctx, {
+			classId: caster.classId,
+			bucket: "known",
+			title: `${caster.className} ${caster.spellbookLabel?.toLowerCase() ?? "spellbook"}`,
+			limit: caster.spellbookLimit,
+			spells: levelled,
+			hint: `Spells written in your book. You start with ${
+				caster.levels === 1 ? "six" : "six plus two per level"
+			}, and can only prepare from these.`,
+		}));
+
+		const inBook = new Set(chosen.known);
+		const preparable = levelled.filter((sp) => inBook.has(sp.id));
+
+		nodes.push(spellPicker(ctx, {
+			classId: caster.classId,
+			bucket: "prepared",
+			title: `${caster.className} prepared spells`,
+			limit,
+			spells: preparable,
+			hint: preparable.length
+				? "Chosen from your spellbook. Swap these on a Long Rest."
+				: "Add spells to your spellbook first.",
+			emptyMessage: "Nothing in your spellbook yet — pick some above.",
+		}));
+
+		return nodes;
+	}
+
+	nodes.push(spellPicker(ctx, {
+		classId: caster.classId,
+		bucket: "prepared",
+		title: caster.preparedLimit != null
+			? `${caster.className} prepared spells`
+			: `${caster.className} spells known`,
+		limit,
+		spells: levelled,
+		hint: maxLevel
+			? `Up to level ${maxLevel}. Grouped by spell level.`
+			: "No levelled slots yet.",
+	}));
+
+	return nodes;
+}
+
+/**
+ * Grouped, collapsible spell picker with a hard limit.
+ *
+ * Selections are stored per class so a multiclassed caster's lists never mix,
+ * and the limit is enforced rather than merely displayed: over-selecting is the
+ * single easiest way to build an illegal character by accident.
+ */
+function spellPicker(ctx, { classId, bucket, title, limit, spells, hint, emptyMessage }) {
+	const { session } = ctx;
+	const char = session.character;
+	const chosen = rules.classSpells(char, classId)[bucket] ?? [];
+	const atLimit = limit != null && chosen.length >= limit;
+
+	if (!spells.length) {
+		return section(title, hint, notice(emptyMessage ?? "Nothing available here yet.", "warn"));
+	}
 
 	const byLevel = new Map();
-	for (const s of pool) {
-		if (!byLevel.has(s.level)) byLevel.set(s.level, []);
-		byLevel.get(s.level).push(s);
+	for (const sp of spells) {
+		if (!byLevel.has(sp.level)) byLevel.set(sp.level, []);
+		byLevel.get(sp.level).push(sp);
+	}
+
+	// Spells already granted for free by a species, feat, domain or oath. Choosing
+	// one again spends a pick on something you already have.
+	const grantedElsewhere = new Map();
+	for (const g of rules.grantedSpells(char)) {
+		if (g.available) grantedElsewhere.set(g.id, g.source);
 	}
 
 	const toggle = (id) => {
-		const next = new Set(char.spells?.[bucket] ?? []);
-		if (next.has(id)) next.delete(id);
-		else next.add(id);
-		session.update((c) => ({ ...c, spells: { ...c.spells, [bucket]: [...next] } }));
+		const current = rules.classSpells(char, classId)[bucket] ?? [];
+		const has = current.includes(id);
+		if (!has && grantedElsewhere.has(id)) {
+			toast(`${grantedElsewhere.get(id)} already grants this.`);
+			return;
+		}
+		if (!has && limit != null && current.length >= limit) {
+			toast(`You can only have ${limit}. Remove one first.`);
+			return;
+		}
+		const next = has ? current.filter((x) => x !== id) : [...current, id];
+		session.update((c) => {
+			const bucketState = { ...(c.spellsByClass?.[classId] ?? {}), [bucket]: next };
+			// Removing a spell from the spellbook must also unprepare it, or the
+			// sheet would show a prepared spell the character no longer knows.
+			if (bucket === "known" && has) {
+				bucketState.prepared = (bucketState.prepared ?? []).filter((x) => x !== id);
+			}
+			return {
+				...c,
+				spellsByClass: { ...(c.spellsByClass ?? {}), [classId]: bucketState },
+			};
+		});
 		ctx.rerender();
 	};
 
-	return section(`${title} (${chosen.size} selected)`, null,
+	const header = limit != null
+		? `${chosen.length} of ${limit} chosen`
+		: `${chosen.length} chosen`;
+
+	return section(title, [hint, header].filter(Boolean).join(" · "), [
+		atLimit && notice(`You have reached your limit of ${limit}. Deselect one to swap.`),
 		el("div.spell-levels", {}, [...byLevel.entries()]
 			.sort((a, b) => a[0] - b[0])
-			.map(([level, list]) =>
-				el("details.spell-level", { open: level <= 1 }, [
-					el("summary", { text: level === 0 ? "Cantrips" : `Level ${level}` }),
+			.map(([level, list]) => {
+				const chosenHere = list.filter((sp) => chosen.includes(sp.id)).length;
+				return el("details.spell-level", { open: level <= 1 || chosenHere > 0 }, [
+					el("summary", {
+						text: `${level === 0 ? "Cantrips" : `Level ${level}`}`
+							+ ` — ${list.length} available${chosenHere ? `, ${chosenHere} selected` : ""}`,
+					}),
 					el("div.spell-grid", {}, list
 						.sort((a, b) => a.name.localeCompare(b.name))
-						.map((s) =>
-							el("label.spell-chip", {
-								class: chosen.has(s.id) ? "is-chosen" : "",
-							}, [
-								el("input", {
-									type: "checkbox",
-									checked: chosen.has(s.id),
-									onchange: () => toggle(s.id),
-								}),
-								el("span.spell-chip__name", { text: s.name }),
-								el("button.spell-chip__info", {
-									type: "button", text: "?",
-									onclick: (e) => {
-										e.preventDefault();
-										e.stopPropagation();
-										modal(s.name, el("div", {}, [
-											el("p.muted", {
-												text: [
-													s.level === 0 ? "Cantrip" : `Level ${s.level}`,
-													s.school,
-													s.concentration ? "Concentration" : null,
-													s.ritual ? "Ritual" : null,
-												].filter(Boolean).join(" · "),
-											}),
-											rulesHtml(s.html),
-											s.higherLevel && rulesHtml(s.higherLevel),
-											// Summoning spells link to the stat block they conjure.
-											creatureRefLinks(s.creatureRefs),
-										].filter(Boolean)));
-									},
-								}),
-							]),
-						)),
-				]),
-			)),
-	);
+						.map((sp) => spellChip(
+							sp,
+							chosen.includes(sp.id),
+							atLimit,
+							() => toggle(sp.id),
+							grantedElsewhere.get(sp.id) ?? null,
+						))),
+				]);
+			})),
+	].filter(Boolean));
+}
+
+/**
+ * One selectable spell, with a shortcut to its full description.
+ *
+ * `grantedBy` marks a spell the character already has for free. It is shown
+ * greyed with its source rather than hidden, so the reason is visible.
+ */
+function spellChip(sp, isChosen, atLimit, onToggle, grantedBy = null) {
+	const blocked = !isChosen && Boolean(grantedBy);
+	return el("label.spell-chip", {
+		class: [
+			isChosen ? "is-chosen" : "",
+			blocked ? "is-granted" : "",
+			!isChosen && !blocked && atLimit ? "is-disabled" : "",
+		].filter(Boolean).join(" "),
+		title: blocked
+			? `${grantedBy} already grants this spell`
+			: [
+				sp.concentration ? "Concentration" : null,
+				sp.ritual ? "Ritual" : null,
+				sp.school,
+			].filter(Boolean).join(" · "),
+	}, [
+		el("input", {
+			type: "checkbox",
+			checked: isChosen,
+			disabled: blocked || (!isChosen && atLimit),
+			onchange: onToggle,
+		}),
+		el("span.spell-chip__name", { text: sp.name }),
+		sp.concentration && el("span.spell-chip__tag", { text: "C", title: "Concentration" }),
+		sp.ritual && el("span.spell-chip__tag", { text: "R", title: "Ritual" }),
+		// Every spell name in the app opens its description.
+		infoButton(() => showSpell(sp), sp.name),
+	].filter(Boolean));
 }
 
 /* ------------------------------------------------------------------ *
@@ -1771,138 +2188,142 @@ const companionsStep = {
 	isRelevant: (char) => hasWildShape(char) || companionChoices(char).length > 0,
 
 	render(ctx) {
-		const { session } = ctx;
-		const char = session.character;
-		const host = el("div", {}, [el("p.muted", { text: "Loading stat blocks…" })]);
+		// Same reasoning as the Spells step: synchronous once cached, so a pick
+		// does not lose the scroll position.
+		if (db.creatures) return buildCompanionStep(ctx);
 
+		const host = el("div", {}, [el("p.muted", { text: "Loading stat blocks…" })]);
 		(async () => {
 			await ensure("creatures");
-			const nodes = [];
-
-			// --- Wild Shape ------------------------------------------------
-			if (hasWildShape(char)) {
-				const druid = (char.classes ?? []).find((e) => /druid/i.test(getClass(e.classId)?.name ?? ""));
-				const level = druid?.levels ?? rules.totalLevel(char);
-				const limits = wildShapeLimits(level);
-
-				const unrestricted = Boolean(char.houseRules?.unrestrictedWildShape);
-				const pool = (db.creatures ?? [])
-					.filter((c) => c.role === "beast")
-					.filter((c) => c.edition === (char.edition ?? "2024"))
-					.filter((c) => unrestricted || (c.crValue ?? 0) <= limits.maxCr)
-					.filter((c) => unrestricted || limits.allowFly || !c.hasFlySpeed)
-					.filter((c) => unrestricted || limits.allowSwim || !c.hasSwimSpeed)
-					.sort((a, b) => a.name.localeCompare(b.name));
-
-				const chosen = char.wildShapeForms ?? [];
-
-				nodes.push(section("Wild Shape forms",
-					`Know ${limits.known} forms. At Druid level ${level} the pool is Beasts of CR ${crLabel(limits.maxCr)} or lower`
-					+ `${limits.allowFly ? "" : ", with no Fly Speed"}${limits.allowSwim ? "" : " and no Swim Speed"}.`,
-					pool.length
-						? el("div.choice-list", {}, pool.map((c) => {
-							const isChosen = chosen.includes(c.id);
-							const atLimit = !isChosen && chosen.length >= limits.known;
-							return el("label.choice", {
-								class: [isChosen ? "is-chosen" : "", atLimit ? "is-disabled" : ""].filter(Boolean).join(" "),
-							}, [
-								el("input", {
-									type: "checkbox", checked: isChosen, disabled: atLimit,
-									onchange: () => {
-										const next = isChosen
-											? chosen.filter((x) => x !== c.id)
-											: [...chosen, c.id];
-										session.update({ wildShapeForms: next });
-										ctx.rerender();
-									},
-								}),
-								el("span.choice__body", {}, [
-									el("span.choice__label", { text: c.name }),
-									el("span.choice__hint", { text: creatureSubtitle(c) }),
-								]),
-								el("button.spell-chip__info", {
-									type: "button", text: "?",
-									onclick: (e) => { e.preventDefault(); e.stopPropagation(); showCreature(c.id); },
-								}),
-							]);
-						}))
-						: notice("No Beast stat blocks matched. Check that creatures.json was generated.", "warn"),
-				));
-
-				if (chosen.length > limits.known) {
-					nodes.push(notice(`You have ${chosen.length} forms selected but know only ${limits.known}.`, "warn"));
-				}
-
-				nodes.push(el("label.house-rule-toggle", {}, [
-					el("input", {
-						type: "checkbox",
-						checked: unrestricted,
-						onchange: (e) => {
-							session.update((c) => ({
-								...c,
-								houseRules: { ...(c.houseRules ?? {}), unrestrictedWildShape: e.target.checked },
-							}));
-							ctx.rerender();
-						},
-					}),
-					el("span", { text: "House rule: show every Beast, ignoring the CR and movement limits" }),
-				]));
-			}
-
-			// --- Companions -------------------------------------------------
-			for (const { feature, source } of companionChoices(char)) {
-				const picked = char.companions?.[feature.name];
-				nodes.push(section(feature.name, `From ${source}. Choose the stat block.`,
-					el("div.pick-grid.pick-grid--compact", {}, feature.creatureRefs.map((ref) => {
-						const c = findCreature(ref);
-						return card({
-							title: ref.name,
-							subtitle: c ? creatureSubtitle(c) : "stat block not found",
-							blurb: c ? (c.actions ?? []).map((a) => a.name).join(", ") : "",
-							selected: picked === (c?.id ?? ref.id),
-							onSelect: () => {
-								session.update((ch) => ({
-									...ch,
-									companions: { ...(ch.companions ?? {}), [feature.name]: c?.id ?? ref.id },
-								}));
-								ctx.rerender();
-							},
-							onInfo: () => showCreature(c?.id ?? ref),
-						});
-					})),
-				));
-
-				if (picked) {
-					const c = findCreature(picked);
-					if (c) nodes.push(section(null, null, statBlock(c)));
-				}
-			}
-
-			// --- Summons from known spells -----------------------------------
-			const summonSpells = (db.spells ?? []).filter(
-				(sp) => (sp.creatureRefs ?? []).length
-					&& [...(char.spells?.prepared ?? []), ...(char.spells?.cantrips ?? [])].includes(sp.id),
-			);
-			if (summonSpells.length) {
-				nodes.push(section("Stat blocks from your spells",
-					"Spells you have selected that summon or create a creature.",
-					el("div.summon-list", {}, summonSpells.map((sp) =>
-						el("div.summon-row", {}, [
-							el("span.summon-row__spell", { text: sp.name }),
-							creatureRefLinks(sp.creatureRefs),
-						]),
-					)),
-				));
-			}
-
-			host.replaceChildren(...nodes.filter(Boolean));
+			host.replaceChildren(...buildCompanionStep(ctx));
 		})();
-
 		return [host];
 	},
 
 	isComplete: () => true,
 };
+
+/** Builds the Forms & Companions step. */
+function buildCompanionStep(ctx) {
+	const { session } = ctx;
+	const char = session.character;
+	const nodes = [];
+
+	// --- Wild Shape ------------------------------------------------
+	if (hasWildShape(char)) {
+		const druid = (char.classes ?? []).find((e) => /druid/i.test(getClass(e.classId)?.name ?? ""));
+		const level = druid?.levels ?? rules.totalLevel(char);
+		const limits = wildShapeLimits(level);
+
+		const unrestricted = Boolean(char.houseRules?.unrestrictedWildShape);
+		const pool = (db.creatures ?? [])
+			.filter((c) => c.role === "beast")
+			.filter((c) => c.edition === (char.edition ?? "2024"))
+			.filter((c) => unrestricted || (c.crValue ?? 0) <= limits.maxCr)
+			.filter((c) => unrestricted || limits.allowFly || !c.hasFlySpeed)
+			.filter((c) => unrestricted || limits.allowSwim || !c.hasSwimSpeed)
+			.sort((a, b) => a.name.localeCompare(b.name));
+
+		const chosen = char.wildShapeForms ?? [];
+
+		nodes.push(section("Wild Shape forms",
+			`Know ${limits.known} forms. At Druid level ${level} the pool is Beasts of CR ${crLabel(limits.maxCr)} or lower`
+			+ `${limits.allowFly ? "" : ", with no Fly Speed"}${limits.allowSwim ? "" : " and no Swim Speed"}.`,
+			pool.length
+				? el("div.choice-list", {}, pool.map((c) => {
+					const isChosen = chosen.includes(c.id);
+					const atLimit = !isChosen && chosen.length >= limits.known;
+					return el("label.choice", {
+						class: [isChosen ? "is-chosen" : "", atLimit ? "is-disabled" : ""].filter(Boolean).join(" "),
+					}, [
+						el("input", {
+							type: "checkbox", checked: isChosen, disabled: atLimit,
+							onchange: () => {
+								const next = isChosen
+									? chosen.filter((x) => x !== c.id)
+									: [...chosen, c.id];
+								session.update({ wildShapeForms: next });
+								ctx.rerender();
+							},
+						}),
+						el("span.choice__body", {}, [
+							el("span.choice__label", { text: c.name }),
+							el("span.choice__hint", { text: creatureSubtitle(c) }),
+						]),
+						infoButton(() => showCreature(c.id), c.name),
+					]);
+				}))
+				: notice("No Beast stat blocks matched. Check that creatures.json was generated.", "warn"),
+		));
+
+		if (chosen.length > limits.known) {
+			nodes.push(notice(`You have ${chosen.length} forms selected but know only ${limits.known}.`, "warn"));
+		}
+
+		nodes.push(el("label.house-rule-toggle", {}, [
+			el("input", {
+				type: "checkbox",
+				checked: unrestricted,
+				onchange: (e) => {
+					session.update((c) => ({
+						...c,
+						houseRules: { ...(c.houseRules ?? {}), unrestrictedWildShape: e.target.checked },
+					}));
+					ctx.rerender();
+				},
+			}),
+			el("span", { text: "House rule: show every Beast, ignoring the CR and movement limits" }),
+		]));
+	}
+
+	// --- Companions -------------------------------------------------
+	for (const { feature, source } of companionChoices(char)) {
+		const picked = char.companions?.[feature.name];
+		nodes.push(section(feature.name, `From ${source}. Choose the stat block.`,
+			el("div.pick-grid.pick-grid--compact", {}, feature.creatureRefs.map((ref) => {
+				const c = findCreature(ref);
+				return card({
+					title: ref.name,
+					subtitle: c ? creatureSubtitle(c) : "stat block not found",
+					blurb: c ? (c.actions ?? []).map((a) => a.name).join(", ") : "",
+					selected: picked === (c?.id ?? ref.id),
+					onSelect: () => {
+						session.update((ch) => ({
+							...ch,
+							companions: { ...(ch.companions ?? {}), [feature.name]: c?.id ?? ref.id },
+						}));
+						ctx.rerender();
+					},
+					onInfo: () => showCreature(c?.id ?? ref),
+				});
+			})),
+		));
+
+		if (picked) {
+			const c = findCreature(picked);
+			if (c) nodes.push(section(null, null, statBlock(c)));
+		}
+	}
+
+	// --- Summons from known spells -----------------------------------
+	const summonSpells = (db.spells ?? []).filter(
+		(sp) => (sp.creatureRefs ?? []).length
+			&& [...(char.spells?.prepared ?? []), ...(char.spells?.cantrips ?? [])].includes(sp.id),
+	);
+	if (summonSpells.length) {
+		nodes.push(section("Stat blocks from your spells",
+			"Spells you have selected that summon or create a creature.",
+			el("div.summon-list", {}, summonSpells.map((sp) =>
+				el("div.summon-row", {}, [
+					el("span.summon-row__spell", { text: sp.name }),
+					creatureRefLinks(sp.creatureRefs),
+				]),
+			)),
+		));
+	}
+
+	return nodes.filter(Boolean);
+}
 
 /* ------------------------------------------------------------------ *
  * Step 7 - Details

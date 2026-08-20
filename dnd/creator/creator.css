@@ -194,6 +194,19 @@
 .step-section__title { margin: 0; }
 .step-section__hint { color: var(--ink-dim); font-size: 0.88rem; margin: 0; }
 
+/* Flashed when arrived at from a "Change this" link, so the eye lands on it. */
+.step-section.is-flash {
+	animation: section-flash 1.6s ease-out;
+	border-radius: var(--radius);
+}
+@keyframes section-flash {
+	0%, 25% { box-shadow: 0 0 0 3px var(--yellow); background: rgba(255, 214, 0, 0.09); }
+	100% { box-shadow: 0 0 0 3px transparent; background: transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.step-section.is-flash { animation: none; box-shadow: 0 0 0 3px var(--yellow); }
+}
+
 .pick-grid {
 	display: grid; gap: 10px;
 	grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
@@ -259,6 +272,8 @@
 	display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .choice__lock { margin-left: auto; font-size: 0.68rem; color: var(--green); }
+.choice { position: relative; }
+.choice .info-btn { align-self: flex-start; }
 .pick-help { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
 
 /* Fields ------------------------------------------------------------------ */
@@ -363,7 +378,75 @@
 	border-bottom-style: solid;
 	outline: none;
 }
-.rr-dice { color: var(--yellow); font-weight: 600; font-variant-numeric: tabular-nums; }
+/* Dice expressions are clickable and roll in a small popover. */
+.rr-dice {
+	color: var(--yellow); font-weight: 600; font-variant-numeric: tabular-nums;
+	cursor: pointer; border-bottom: 1px dotted currentColor;
+}
+.rr-dice:hover { color: #fff; background: rgba(255, 214, 0, 0.15); border-bottom-style: solid; }
+
+/* --------------------------------------------------------------------------
+   Dice roller popover
+   -------------------------------------------------------------------------- */
+
+.dice-popover {
+	position: fixed; z-index: 300; width: 240px;
+	background: var(--panel); border: 2px solid var(--yellow);
+	border-radius: var(--radius);
+	box-shadow: 0 0 0 1px #000, 0 14px 32px rgba(0, 0, 0, 0.7);
+	font-family: var(--sans);
+}
+.dice-popover__head {
+	display: flex; align-items: center; justify-content: space-between; gap: 8px;
+	background: var(--panel-2); border-bottom: 1px solid var(--line); padding: 6px 10px;
+}
+.dice-popover__expr {
+	font-size: 0.76rem; font-weight: 700; color: var(--yellow);
+	font-variant-numeric: tabular-nums;
+}
+.dice-popover__close {
+	background: none; border: none; color: var(--ink-dim);
+	font-size: 1.1rem; line-height: 1; cursor: pointer; padding: 0 2px;
+}
+.dice-popover__close:hover { color: var(--red); }
+.dice-popover__body { padding: 10px; }
+.dice-popover__actions {
+	display: flex; gap: 6px; padding: 0 10px 10px;
+}
+.dice-btn { flex: 1; padding: 6px 8px; font-size: 0.78rem; }
+.dice-popover__note {
+	margin: 0; padding: 0 10px 10px; font-size: 0.68rem; color: var(--ink-dim);
+}
+
+.dice-result__total {
+	display: flex; align-items: baseline; gap: 8px; justify-content: center;
+	margin-bottom: 8px;
+}
+.dice-result__value {
+	font-size: 2rem; font-weight: 700; color: var(--yellow);
+	font-variant-numeric: tabular-nums; line-height: 1;
+}
+.dice-result__crit {
+	font-size: 0.64rem; font-weight: 700; text-transform: uppercase;
+	background: var(--red); color: #fff; padding: 2px 5px; border-radius: 2px;
+}
+.dice-result__breakdown { display: flex; flex-direction: column; gap: 5px; }
+.dice-group { display: flex; align-items: center; gap: 6px; }
+.dice-group__label {
+	font-size: 0.68rem; color: var(--blue); font-weight: 700;
+	min-width: 40px; font-variant-numeric: tabular-nums;
+}
+.dice-group__rolls { display: flex; flex-wrap: wrap; gap: 3px; }
+.die {
+	min-width: 21px; text-align: center; font-size: 0.76rem;
+	background: var(--panel-2); border: 1px solid var(--line);
+	border-radius: 2px; padding: 1px 3px; font-variant-numeric: tabular-nums;
+}
+/* A natural max or a 1 is worth spotting without counting. */
+.die.is-max { border-color: var(--green); color: var(--green); font-weight: 700; }
+.die.is-min { border-color: var(--red); color: var(--red); }
+.dice-result__mod { margin: 8px 0 0; font-size: 0.72rem; color: var(--ink-dim); text-align: center; }
+.dice-result__kept { margin: 8px 0 0; font-size: 0.7rem; color: var(--blue); text-align: center; }
 
 .feature-row { display: flex; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--line); }
 .feature-row__level { color: var(--yellow); font-weight: 700; min-width: 34px; font-size: 0.82rem; }
@@ -422,12 +505,32 @@
 .spell-chip.is-chosen { border-color: var(--yellow); background: #2a2818; }
 .spell-chip input { width: auto; }
 .spell-chip__name { flex: 1; }
+/* The circular "?" that opens an explanation. One affordance everywhere. */
+.info-btn {
+	flex: 0 0 auto;
+	background: none; border: 1px solid var(--line); color: var(--ink-dim);
+	border-radius: 50%; width: 19px; height: 19px; padding: 0;
+	font-family: var(--sans); font-size: 0.7rem; font-weight: 700; line-height: 1;
+	cursor: pointer; margin-left: auto;
+	display: inline-flex; align-items: center; justify-content: center;
+}
+.info-btn:hover, .info-btn:focus-visible {
+	border-color: var(--blue); color: var(--blue);
+	background: var(--panel); outline: none;
+}
+/* Inside a compact row the icon sits beside its label, not pushed to the edge. */
+.timeline__pick .info-btn,
+.prop-chips .info-btn { margin-left: 4px; }
+
 .spell-chip__info {
 	background: none; border: 1px solid var(--line); color: var(--ink-dim);
 	border-radius: 50%; width: 19px; height: 19px; cursor: pointer;
 	font-size: 0.7rem; line-height: 1; padding: 0;
 }
 .spell-chip__info:hover { border-color: var(--blue); color: var(--blue); }
+
+.timeline__pick-name { font-size: 0.84rem; color: var(--ink); }
+.timeline__pick { display: inline-flex; align-items: center; gap: 2px; }
 
 .stat-strip, .combat-grid {
 	display: grid; gap: 8px;
@@ -513,27 +616,236 @@
 .line-list__ability { font-size: 0.68rem; color: var(--ink-dim); }
 .line-list__value { font-weight: 700; color: var(--yellow); min-width: 30px; text-align: right; font-variant-numeric: tabular-nums; }
 
-.hp-block { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
-.hp-block__max { display: flex; align-items: baseline; gap: 8px; }
-.hp-block__label { font-size: 0.7rem; color: var(--blue); text-transform: uppercase; font-weight: 700; }
-.hp-block__value { font-size: 1.6rem; font-weight: 700; color: var(--yellow); }
-.hp-block__current { display: flex; gap: 10px; margin-top: 8px; }
-.hp-block__dice { font-size: 0.8rem; color: var(--ink-dim); margin-top: 6px; }
+/* ---- hit points -------------------------------------------------- *
+   One readout, steppers either side, temp HP and hit dice underneath. The
+   current total is an input so a ruling at the table can override it. */
+.hp-block {
+	margin-top: 12px; border-top: 1px solid var(--line); padding-top: 12px;
+	text-align: center;
+}
+.hp-extra { justify-content: center !important; }
+
+.hp-readout { text-align: center; }
+.hp-readout__label {
+	display: block; margin-bottom: 2px;
+	font-size: 0.82rem; letter-spacing: 0.08em;
+	color: var(--blue); text-transform: uppercase; font-weight: 700;
+}
+.hp-readout__row {
+	display: flex; align-items: baseline; justify-content: center; gap: 4px;
+}
+.hp-readout__current {
+	width: 2.4em; padding: 0; border: none; background: none;
+	color: var(--yellow); font-family: var(--sans);
+	font-size: 2.9rem; font-weight: 700; line-height: 1.05;
+	text-align: right; font-variant-numeric: tabular-nums;
+	/* The spinner arrows would crowd a number this large. */
+	-moz-appearance: textfield;
+}
+.hp-readout__current::-webkit-outer-spin-button,
+.hp-readout__current::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.hp-readout__current:focus { outline: 1px solid var(--blue); border-radius: var(--radius); }
+.hp-readout__current.is-hurt { color: var(--yellow); }
+.hp-readout__current.is-down { color: var(--red); }
+.hp-readout__slash { color: var(--ink-dim); font-size: 1.8rem; font-weight: 300; }
+.hp-readout__max {
+	min-width: 2.2em; padding: 0 2px; background: none; border: none;
+	border-bottom: 1px dotted var(--ink-dim);
+	color: var(--ink); font-family: var(--sans);
+	font-size: 2.1rem; font-weight: 700; line-height: 1.05;
+	font-variant-numeric: tabular-nums; cursor: pointer;
+}
+.hp-readout__max:hover { color: var(--blue); border-bottom-color: var(--blue); }
+/* Only the printed sheet uses the plain span. */
+.hp-readout__max-print { display: none; }
+
+/* −[ n ]+ : the amount in the middle, the direction either side. */
+.hp-adjust {
+	display: flex; align-items: center; justify-content: center;
+	gap: 3px; margin-top: 8px;
+}
+.hp-adjust__btn {
+	width: 22px; height: 22px; padding: 0;
+	background: var(--panel-2); color: var(--ink);
+	border: 1px solid var(--line); border-radius: var(--radius);
+	font-family: var(--sans); font-size: 0.9rem; font-weight: 700;
+	line-height: 1; cursor: pointer;
+}
+.hp-adjust__btn:hover { border-color: var(--blue); color: var(--blue); }
+.hp-adjust__amount {
+	width: 2.6em; padding: 2px 2px; text-align: center;
+	background: var(--panel-2); color: var(--ink);
+	border: 1px solid var(--line); border-radius: var(--radius);
+	font-family: var(--sans); font-size: 0.8rem; font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	-moz-appearance: textfield;
+}
+.hp-adjust__amount::-webkit-outer-spin-button,
+.hp-adjust__amount::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.hp-adjust__amount:focus { outline: 1px solid var(--blue); }
+
+.rest-buttons { display: flex; gap: 8px; margin-top: 10px; }
+.rest-buttons .btn { flex: 1; }
+
+.hp-max-dialog__field {
+	display: flex; align-items: center; justify-content: space-between;
+	gap: 10px; margin: 14px 0 6px;
+}
+.hp-max-dialog__field input {
+	width: 5em; padding: 4px 6px; text-align: center;
+	background: var(--panel-2); color: var(--ink);
+	border: 1px solid var(--line); border-radius: var(--radius);
+	font-family: var(--sans); font-size: 0.95rem;
+}
+
+.hp-bar {
+	height: 6px; margin-top: 4px; border-radius: 3px;
+	background: var(--panel-2); border: 1px solid var(--line); overflow: hidden;
+}
+.hp-bar__fill { height: 100%; background: var(--green); transition: width 120ms linear; }
+.hp-bar__fill.is-hurt { background: var(--yellow); }
+.hp-bar__fill.is-down { background: var(--red); }
+
+.hp-extra {
+	display: flex; align-items: center; justify-content: space-between;
+	gap: 10px; margin-top: 8px; flex-wrap: wrap;
+}
+.hp-temp { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--ink-dim); }
+.hp-temp input {
+	width: 2.6em; padding: 2px 2px; text-align: center;
+	background: var(--panel-2); color: var(--ink);
+	border: 1px solid var(--line); border-radius: var(--radius);
+	font-family: var(--sans); font-size: 0.8rem; font-weight: 700;
+	-moz-appearance: textfield;
+}
+.hp-temp input::-webkit-outer-spin-button,
+.hp-temp input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+.hp-dice { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; flex-wrap: wrap; }
+.hp-dice__label { color: var(--ink-dim); }
+.hp-dice__value { font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.hp-dice__value.is-spent { color: var(--red); }
+.hp-dice__group {
+	padding: 1px 5px; border: 1px solid var(--line); border-radius: 999px;
+	background: var(--panel-2); color: var(--ink-dim); font-size: 0.7rem;
+}
+.hp-dice__group.is-spent { opacity: 0.45; text-decoration: line-through; }
+
+/* ---- rest buttons ------------------------------------------------ */
+.btn--rest { border-color: var(--blue); color: var(--blue); }
+.btn--rest:hover { background: var(--blue); color: #fff; }
+.btn--rest-long { border-color: var(--yellow); color: var(--yellow); }
+.btn--rest-long:hover { background: var(--yellow); color: #181818; }
+
+/* ---- the rest dialogs -------------------------------------------- */
+.rest-dialog h4 {
+	margin: 14px 0 6px; font-size: 0.7rem; letter-spacing: 0.06em;
+	text-transform: uppercase; color: var(--blue);
+}
+.rest-dialog__hp { font-size: 0.95rem; }
+.rest-dialog__list { margin: 4px 0 0; padding-left: 18px; font-size: 0.85rem; line-height: 1.6; }
+.rest-dialog__list .is-spent { color: var(--yellow); font-weight: 700; }
+.rest-dialog__confirm { margin-top: 16px; }
+
+.hd-list { display: flex; flex-direction: column; gap: 6px; }
+.hd-row {
+	display: flex; align-items: center; gap: 10px;
+	padding: 6px 8px; background: var(--panel-2);
+	border: 1px solid var(--line); border-radius: var(--radius);
+}
+.hd-row__die { font-weight: 700; color: var(--yellow); min-width: 2.5em; }
+.hd-row__count { flex: 1; font-size: 0.8rem; color: var(--ink-dim); }
+.hd-row__count.is-spent { color: var(--red); }
+
+/* ---- limited-use features ---------------------------------------- */
+.resource-list { display: flex; flex-direction: column; gap: 10px; }
+.resource-row { display: flex; flex-direction: column; gap: 4px; }
+.resource-row__head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.resource-row__name { font-weight: 700; }
+.resource-row__recharge {
+	padding: 1px 6px; border-radius: 999px; font-size: 0.62rem;
+	text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700;
+	border: 1px solid var(--line); background: var(--panel-2);
+}
+.resource-row__recharge.is-short { color: var(--green); border-color: var(--green); }
+.resource-row__recharge.is-long { color: var(--yellow); border-color: var(--yellow); }
+.resource-row__pips { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.resource-row__count { margin-left: 4px; font-size: 0.72rem; color: var(--ink-dim); }
+.resource-row__count.is-spent { color: var(--red); }
+
+.pip {
+	width: 16px; height: 16px; padding: 0;
+	background: var(--panel-2); border: 1px solid var(--ink-dim);
+	border-radius: 3px; cursor: pointer;
+}
+.pip:hover { border-color: var(--blue); }
+/* A spent use is filled in, the way a pencilled tick reads on paper. */
+.pip.is-used { background: var(--red); border-color: var(--red); }
 .mini-field { display: flex; flex-direction: column; gap: 3px; font-size: 0.72rem; color: var(--ink-dim); flex: 1; }
 
-.sheet-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
-.sheet-table th, .sheet-table td { border-bottom: 1px solid var(--line); padding: 5px 6px; text-align: left; }
+/* The attacks table.
+   `table-layout: fixed` is deliberate: with automatic layout the widest
+   unbreakable content wins, so a long range ("5 ft · 30/120 thrown") plus a row
+   of property chips pushed the table past the panel edge. Fixed layout makes the
+   declared widths authoritative and lets the content wrap inside them. */
+.sheet-table {
+	width: 100%; max-width: 100%; table-layout: fixed;
+	border-collapse: collapse; font-size: 0.83rem;
+}
+.sheet-table th, .sheet-table td {
+	border-bottom: 1px solid var(--line); padding: 5px 6px; text-align: left;
+	overflow-wrap: anywhere; /* never let one long token force a scrollbar */
+}
 .sheet-table th { color: var(--blue); font-size: 0.7rem; text-transform: uppercase; }
 .sheet-table td { vertical-align: top; }
+
+/* Weapon · Atk · Damage · Range. Properties live on their own full-width row
+   underneath, so the four numeric columns stay narrow and aligned. */
+.attack-table th:nth-child(1), .attack-table td:nth-child(1) { width: 32%; }
+.attack-table th:nth-child(2), .attack-table td:nth-child(2) { width: 12%; text-align: center; }
+.attack-table th:nth-child(3), .attack-table td:nth-child(3) { width: 30%; }
+.attack-table th:nth-child(4), .attack-table td:nth-child(4) { width: 26%; }
+
+/* The stat row keeps its bottom border off, so a weapon and its notes read as
+   one block rather than two. */
+.attack-row > td { border-bottom: none; padding-bottom: 1px; }
+.attack-notes-row > td { padding-top: 0; padding-bottom: 7px; }
+.attack-notes-row .prop-chips { margin-top: 2px; }
+.attack-num { font-variant-numeric: tabular-nums; }
 
 .attack-grip {
 	display: block; font-size: 0.66rem; color: var(--ink-dim); text-transform: lowercase;
 }
 .attack-bonus { display: block; font-size: 0.66rem; color: var(--green); }
 .attack-props { display: block; font-size: 0.72rem; color: var(--ink-dim); }
-.attack-effect {
-	display: block; font-size: 0.72rem; margin-top: 2px;
+
+/* Reach or range: a core combat number, so it gets its own column. */
+.attack-range {
+	display: inline-block;
+	font-size: 0.76rem; cursor: help; line-height: 1.35;
+	border-bottom: 1px dotted var(--line);
 }
+
+/* Weapon properties and masteries, each opening its own rules text. */
+.prop-chips {
+	display: flex; flex-wrap: wrap; gap: 3px;
+	min-width: 0; /* lets the flex row wrap instead of widening its cell */
+}
+.prop-chip {
+	font-size: 0.66rem; padding: 1px 5px; cursor: pointer;
+	background: var(--panel-2); border: 1px solid var(--line);
+	border-radius: 2px; color: var(--ink-dim); font-weight: 500;
+}
+.prop-chip:hover, .prop-chip:focus-visible {
+	border-color: var(--blue); color: var(--blue); outline: none;
+}
+/* Masteries are a 2024 mechanic and worth distinguishing from properties. */
+.prop-chip--mastery { border-color: var(--yellow); color: var(--yellow); }
+.prop-chip--mastery:hover { background: var(--yellow); color: #181818; }
+.attack-effect {
+	display: block; font-size: 0.72rem; margin-top: 3px;
+}
+.attack-notes-row td { line-height: 1.4; }
 .attack-effect.is-on { color: var(--green); }
 
 .attack-inactive {
@@ -558,6 +870,9 @@
 }
 .grip-toggle__btn:hover { border-color: var(--blue); color: var(--ink); }
 .grip-toggle__btn.is-active { background: var(--yellow); color: #181818; border-color: var(--yellow); }
+.grip-toggle__btn.is-blocked { opacity: 0.35; cursor: not-allowed; text-decoration: line-through; }
+.grip-toggle__note { font-size: 0.64rem; color: var(--ink-dim); align-self: center; }
+details.timeline__row.is-missing { border-color: var(--yellow); }
 
 .item-list { list-style: none; margin: 0; padding: 0; }
 .item-list__row {
@@ -579,6 +894,10 @@
 .prof-row { display: flex; gap: 8px; padding: 4px 0; border-bottom: 1px solid #2a2a2a; font-size: 0.85rem; }
 .prof-row__label { color: var(--blue); font-weight: 600; min-width: 74px; }
 .prof-row__value { flex: 1; text-transform: capitalize; }
+/* A category label that links to the rule governing it. */
+.prof-row__label.rr-ref { cursor: pointer; }
+.item-list__qty { color: var(--ink-dim); font-size: 0.78rem; margin-left: 4px; }
+.loadout__name .rr-ref { font-weight: 600; }
 
 .effect-list { margin: 0; padding-left: 18px; font-size: 0.83rem; color: var(--ink-dim); }
 .spell-list { margin-top: 10px; }
@@ -606,8 +925,8 @@
 .modal-overlay > .modal { pointer-events: auto; }
 
 .modal {
-	/* Solid, not a token that might be semi-transparent: windows overlap. */
-	background: #232323;
+	/* Fully opaque: windows overlap, so nothing may show through. */
+	background: var(--panel);
 	border: 3px solid var(--blue);
 	border-radius: var(--radius);
 	max-width: 640px; width: 100%; max-height: 84vh;
@@ -629,8 +948,8 @@
 	border-radius: var(--radius); padding: 4px 10px; cursor: pointer; font-family: var(--sans);
 }
 .modal__close:hover { border-color: var(--red); color: var(--red); }
-.modal__body { padding: 16px; overflow-y: auto; background: #232323; }
-.modal__head { background: #1e1e1e; }
+.modal__body { padding: 16px; overflow-y: auto; background: var(--panel); }
+.modal__head { background: var(--panel-2); }
 
 .notice {
 	border-left: 3px solid var(--blue); background: var(--panel-2);
@@ -667,6 +986,18 @@
 .levelup__gain { color: var(--yellow); font-weight: 700; }
 .levelup__roll { font-size: 0.85rem; color: var(--ink-dim); }
 .levelup__actions { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 14px; }
+
+/* Feat sub-choices: each question a feat asks gets its own block. */
+.feat-detail {
+	margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px;
+}
+.feat-options { display: flex; flex-direction: column; gap: 14px; }
+.feat-option {
+	background: var(--panel-2); border: 1px solid var(--line);
+	border-radius: var(--radius); padding: 10px;
+}
+.feat-option__label { margin: 0 0 6px; color: var(--yellow); }
+.feat-option__pending { margin: 6px 0 0; font-size: 0.76rem; color: var(--yellow); }
 
 /* --------------------------------------------------------------------------
    Stat blocks (Wild Shape forms, companions, summons)
@@ -733,6 +1064,311 @@
 }
 
 /* --------------------------------------------------------------------------
+   Spellbook and slot tracking
+   -------------------------------------------------------------------------- */
+
+.spell-class { margin-bottom: 12px; }
+.spell-class__name { margin: 0 0 6px; color: var(--yellow); font-size: 0.8rem; text-transform: none; letter-spacing: 0; }
+.spell-class__warn { margin: 6px 0 0; font-size: 0.78rem; color: var(--red); }
+
+/* Clickable slot pips: click an open one to spend it, a spent one to get it back. */
+.slot-track { display: flex; flex-direction: column; gap: 5px; margin: 10px 0; }
+.slot-track__row { display: flex; align-items: center; gap: 8px; }
+.slot-track__level {
+	font-size: 0.72rem; color: var(--blue); font-weight: 700;
+	min-width: 66px; white-space: nowrap;
+}
+.slot-track__pips { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; }
+.slot-track__count {
+	font-size: 0.72rem; color: var(--ink-dim);
+	min-width: 34px; text-align: right; font-variant-numeric: tabular-nums;
+}
+
+.slot-pip {
+	width: 20px; height: 20px; padding: 0; cursor: pointer;
+	background: var(--panel-2); border: 2px solid var(--blue);
+	border-radius: 3px; transition: background 0.12s, border-color 0.12s;
+}
+.slot-pip:hover { background: var(--blue); }
+.slot-pip.is-used {
+	background: #2a2a2a; border-color: var(--line);
+	position: relative;
+}
+/* A spent slot reads as struck through rather than merely dimmer. */
+.slot-pip.is-used::after {
+	content: ""; position: absolute; inset: 3px;
+	background: linear-gradient(45deg, transparent 44%, var(--red) 44%, var(--red) 56%, transparent 56%);
+}
+.slot-pip.is-used:hover { border-color: var(--yellow); }
+.slot-pip--pact { border-color: var(--yellow); border-radius: 50%; }
+.slot-pip--pact:hover { background: var(--yellow); }
+
+.rest-row { margin-top: 10px; }
+
+.spell-book { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px; }
+.spell-book__title { margin: 0 0 6px; }
+.spell-book__group { display: flex; gap: 8px; margin-bottom: 5px; align-items: baseline; }
+.spell-book__label {
+	font-size: 0.7rem; color: var(--blue); font-weight: 700;
+	min-width: 58px; white-space: nowrap;
+}
+.spell-book__names { display: flex; flex-wrap: wrap; gap: 4px 8px; flex: 1; }
+
+/* A prepared spell's name opens its description. */
+.spell-link {
+	background: none; border: none; padding: 0;
+	color: var(--ink); font-family: var(--sans); font-size: 0.84rem;
+	cursor: pointer; text-align: left;
+	border-bottom: 1px dotted var(--blue);
+}
+.spell-link:hover { color: var(--yellow); border-bottom-color: var(--yellow); }
+
+.spell-chip.is-disabled { opacity: 0.4; }
+/* Already granted for free: shown, but not selectable, with the reason on hover. */
+.spell-chip.is-granted {
+	opacity: 0.55; border-style: dashed; border-color: var(--green); cursor: help;
+}
+.spell-chip.is-granted .spell-chip__name { text-decoration: line-through; }
+.spell-chip__tag {
+	font-size: 0.6rem; font-weight: 700; color: var(--blue);
+	border: 1px solid var(--line); border-radius: 2px; padding: 0 3px;
+}
+
+.spell-detail .sb-core { margin-bottom: 10px; }
+
+/* Spells granted for free, with a badge naming where they came from. */
+.granted-list { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+.granted-spell {
+	display: inline-flex; align-items: center; gap: 5px;
+	background: var(--panel-2); border: 1px solid var(--green);
+	border-radius: var(--radius); padding: 4px 8px;
+}
+.granted-spell.is-locked { border-color: var(--line); opacity: 0.6; }
+.granted-spell__badge {
+	background: var(--green); color: #181818; border: none;
+	border-radius: 2px; width: 17px; height: 17px; padding: 0;
+	font-size: 0.64rem; font-weight: 700; cursor: pointer;
+	font-family: var(--sans); line-height: 1;
+}
+.granted-spell__badge:hover { background: var(--yellow); }
+.granted-spell__from { font-size: 0.68rem; color: var(--ink-dim); }
+
+/* --------------------------------------------------------------------------
+   Feature timeline: what you got, in the order you got it
+   -------------------------------------------------------------------------- */
+
+.timeline { display: flex; flex-direction: column; gap: 10px; }
+.timeline__group { display: flex; flex-direction: column; gap: 4px; }
+.timeline__level {
+	font-size: 0.68rem; font-weight: 700; color: var(--blue);
+	text-transform: uppercase; letter-spacing: 0.06em;
+	border-bottom: 1px solid var(--line); padding-bottom: 2px;
+}
+.timeline__rows { display: flex; flex-direction: column; gap: 4px; }
+
+/* A choice row shows the granting feature and the pick side by side. */
+.timeline__row.is-missing { border-color: var(--yellow); }
+div.timeline__row {
+	display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
+	background: var(--panel-2); border: 1px solid var(--line);
+	border-radius: var(--radius); padding: 7px 10px;
+}
+.timeline__head { display: flex; flex-direction: column; min-width: 110px; }
+.timeline__name { font-weight: 600; color: var(--yellow); font-size: 0.86rem; }
+.timeline__origin { font-size: 0.68rem; color: var(--ink-dim); }
+.timeline__picks { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
+.timeline__pick { display: inline-flex; align-items: center; }
+.timeline__warn { font-size: 0.78rem; color: var(--yellow); }
+.timeline__edit {
+	background: none; border: 1px solid var(--line); color: var(--ink-dim);
+	border-radius: var(--radius); padding: 2px 8px; font-size: 0.7rem;
+	cursor: pointer; font-family: var(--sans);
+}
+.timeline__edit:hover { border-color: var(--yellow); color: var(--yellow); }
+
+/* Worn & held: don/doff, draw/stow and grip, all mid-session. */
+.loadout { display: flex; flex-direction: column; gap: 12px; }
+.loadout__group { display: flex; flex-direction: column; gap: 4px; }
+.loadout__label { margin: 0 0 2px; }
+
+.loadout__row {
+	display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+	background: var(--panel-2); border: 1px solid var(--line);
+	border-radius: var(--radius); padding: 6px 8px;
+}
+.loadout__row.is-on { border-color: var(--green); }
+
+/* The state IS the button: press it to change it. */
+.loadout__toggle {
+	background: var(--panel); border: 1px solid var(--line); color: var(--ink-dim);
+	border-radius: var(--radius); padding: 3px 9px; cursor: pointer;
+	font-family: var(--sans); font-size: 0.68rem; font-weight: 700;
+	text-transform: uppercase; letter-spacing: 0.04em; min-width: 62px;
+}
+.loadout__row.is-on .loadout__toggle {
+	background: var(--green); border-color: var(--green); color: #181818;
+}
+.loadout__toggle:hover { border-color: var(--yellow); color: var(--yellow); }
+.loadout__row.is-on .loadout__toggle:hover { background: var(--yellow); color: #181818; }
+
+.loadout__body { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.loadout__name { font-size: 0.86rem; font-weight: 600; }
+.loadout__note { font-size: 0.68rem; color: var(--ink-dim); }
+
+.loadout__effects {
+	display: flex; flex-direction: column; gap: 2px;
+	border-top: 1px solid var(--line); padding-top: 8px;
+}
+.loadout__effect { margin: 0; font-size: 0.74rem; }
+.loadout__effect.is-on { color: var(--green); }
+.loadout__effect.is-off { color: var(--ink-dim); }
+
+.attack-effect.is-conflict { color: var(--red); }
+
+/* Spellbook entries that are not currently prepared read as inactive. */
+.spell-book__group.is-unprepared { opacity: 0.65; }
+.spell-book__group.is-unprepared .spell-link { border-bottom-style: dashed; }
+
+/* --------------------------------------------------------------------------
+   Build / Play modes and the spell sheet
+   -------------------------------------------------------------------------- */
+
+.play__nav {
+	display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+	border-bottom: 2px solid var(--line); padding-bottom: 10px;
+}
+
+/* Two modes, two jobs: making choices vs using the character. */
+.mode-switch { display: flex; border: 2px solid var(--blue); border-radius: var(--radius); overflow: hidden; }
+.mode-switch__btn {
+	background: var(--panel); border: none; color: var(--ink-dim);
+	font-family: var(--sans); font-size: 0.84rem; font-weight: 600;
+	padding: 7px 16px; cursor: pointer;
+}
+.mode-switch__btn:hover { background: var(--panel-2); color: var(--ink); }
+.mode-switch__btn.is-active { background: var(--blue); color: #fff; cursor: default; }
+
+.page-tabs { display: flex; gap: 4px; margin-left: auto; }
+.page-tabs__btn {
+	background: var(--panel-2); border: 1px solid var(--line); color: var(--ink-dim);
+	border-radius: var(--radius); padding: 6px 14px;
+	font-family: var(--sans); font-size: 0.84rem; cursor: pointer;
+}
+.page-tabs__btn:hover { border-color: var(--blue); color: var(--ink); }
+.page-tabs__btn.is-active { background: var(--yellow); color: #181818; border-color: var(--yellow); font-weight: 600; }
+
+/* Only the selected page shows on screen; both print. */
+.play__page { display: none; }
+.play__page.is-active { display: block; }
+
+.spellsheet { display: flex; flex-direction: column; gap: var(--gap); }
+.spellsheet__header {
+	display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between;
+	align-items: flex-start; border-bottom: 3px solid var(--yellow); padding-bottom: 10px;
+}
+.spellsheet__name { margin: 0; font-size: 0.95rem; }
+.spellsheet__meta { margin: 4px 0 0; color: var(--blue); font-size: 0.88rem; font-weight: 600; }
+
+.spellsheet__classes {
+	display: grid; gap: 10px;
+	grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+.ss-class {
+	background: var(--panel); border: 2px solid var(--line);
+	border-radius: var(--radius); padding: 10px 12px;
+}
+.ss-class__name { margin: 0 0 8px; font-size: 0.76rem; }
+.ss-class__stats { display: flex; flex-wrap: wrap; gap: 6px; }
+.ss-stat {
+	background: var(--panel-2); border: 1px solid var(--blue);
+	border-radius: var(--radius); padding: 5px 9px; text-align: center;
+	display: flex; flex-direction: column; min-width: 62px;
+}
+.ss-stat.is-warn { border-color: var(--red); }
+.ss-stat__label {
+	font-size: 0.6rem; color: var(--blue); text-transform: uppercase;
+	letter-spacing: 0.05em; font-weight: 700;
+}
+.ss-stat__value { font-size: 1rem; font-weight: 700; color: var(--yellow); }
+.ss-stat.is-warn .ss-stat__value { color: var(--red); }
+
+.ss-section__title {
+	margin: 0 0 8px; font-size: 0.74rem;
+	border-bottom: 1px solid var(--line); padding-bottom: 4px;
+}
+.ss-slots, .ss-granted, .ss-list {
+	background: var(--panel); border: 2px solid var(--line);
+	border-radius: var(--radius); padding: 12px;
+}
+.ss-slot-rows { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.ss-slot-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ss-slot-row__level {
+	font-size: 0.76rem; color: var(--blue); font-weight: 700;
+	min-width: 78px; white-space: nowrap;
+}
+.ss-pips { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; }
+.ss-slot-row__count {
+	font-size: 0.72rem; color: var(--ink-dim); min-width: 52px; text-align: right;
+}
+
+.ss-level { margin-bottom: 14px; }
+.ss-level__head {
+	display: flex; align-items: baseline; justify-content: space-between;
+	gap: 10px; margin-bottom: 4px;
+}
+.ss-level__title {
+	font-size: 0.72rem; font-weight: 700; color: var(--blue);
+	text-transform: uppercase; letter-spacing: 0.05em;
+}
+.ss-level__slots { font-size: 0.7rem; color: var(--ink-dim); }
+
+.ss-table {
+	width: 100%; max-width: 100%; table-layout: fixed;
+	border-collapse: collapse; font-size: 0.8rem;
+}
+.ss-table th, .ss-table td { overflow-wrap: anywhere; }
+/* Prep · Spell · Time · Range · Comp · Duration */
+.ss-table th.ss-table__prep, .ss-table td.ss-table__prep { width: 34px; }
+.ss-table th:nth-last-child(4), .ss-table td:nth-last-child(4) { width: 15%; }
+.ss-table th:nth-last-child(3), .ss-table td:nth-last-child(3) { width: 15%; }
+.ss-table th:nth-last-child(2), .ss-table td:nth-last-child(2) { width: 12%; }
+.ss-table th:nth-last-child(1), .ss-table td:nth-last-child(1) { width: 17%; }
+.ss-table th {
+	text-align: left; color: var(--blue); font-size: 0.64rem;
+	text-transform: uppercase; letter-spacing: 0.04em;
+	border-bottom: 1px solid var(--line); padding: 3px 6px; font-weight: 700;
+}
+.ss-table td { padding: 4px 6px; border-bottom: 1px solid #2a2a2a; vertical-align: middle; }
+.ss-table__prep { width: 34px; text-align: center; }
+.ss-table__prep input { width: auto; }
+/* A spell in the book but not prepared is not usable right now. */
+.ss-table tr.is-unprepared { opacity: 0.5; }
+.ss-table tr.is-unprepared .spell-link { border-bottom-style: dashed; }
+
+.ss-from { font-size: 0.7rem; color: var(--ink-dim); margin-left: 5px; }
+.ss-granted .ss-table td:nth-child(2) { white-space: nowrap; }
+
+.ss-tag {
+	display: inline-block; margin-left: 4px;
+	font-size: 0.58rem; font-weight: 700; color: var(--blue);
+	border: 1px solid var(--line); border-radius: 2px; padding: 0 3px;
+}
+
+@media (max-width: 640px) {
+	.play__nav { flex-direction: column; align-items: stretch; }
+	.page-tabs { margin-left: 0; }
+	.spellsheet__classes { grid-template-columns: 1fr; }
+	/* Drop the least important columns rather than scrolling sideways. */
+	.ss-table th:nth-child(5), .ss-table td:nth-child(5) { display: none; }
+	/* Properties already sit on their own full-width row, so nothing needs
+	   hiding on a phone -- just tighten the type. */
+	.sheet-table { font-size: 0.76rem; }
+	.sheet-table th, .sheet-table td { padding: 4px 3px; }
+	.attack-range { border-bottom: none; font-size: 0.7rem; }
+	.prop-chip { font-size: 0.6rem; padding: 1px 3px; }
+}
+
+/* --------------------------------------------------------------------------
    Responsive
    -------------------------------------------------------------------------- */
 
@@ -767,6 +1403,9 @@
 	.sheet-box { border: 1px solid #000; break-inside: avoid; }
 	.sheet-box__head { background: #eee; border-bottom: 1px solid #000; }
 	.ability-cell, .stat-box, .big-stat, .slot-box { border: 1px solid #000; }
+	.slot-pip { border: 1px solid #000; width: 14px; height: 14px; }
+	.slot-pip.is-used::after { background: linear-gradient(45deg, transparent 44%, #000 44%, #000 56%, transparent 56%); }
+	.spell-link { border-bottom: none; color: #000; }
 	.sheet__header { border-bottom: 2px solid #000; }
 
 	/* Features print expanded, since paper has no disclosure triangles. */
@@ -777,6 +1416,134 @@
 	.sb-abilities { border-block-color: #000; }
 
 	a { text-decoration: none; color: #000; }
+
+	/* Both Play pages print, the spell sheet starting a new page. */
+	.play__page { display: block !important; }
+	.play__page--spells { break-before: page; page-break-before: always; }
+	.mode-switch, .page-tabs { display: none !important; }
+	.ss-class, .ss-slots, .ss-granted, .ss-list { border: 1px solid #000; break-inside: avoid; }
+	.ss-stat { border: 1px solid #000; }
+	.ss-level { break-inside: avoid; }
+	.ss-table td, .ss-table th { border-bottom: 1px solid #999; }
+	.ss-table tr.is-unprepared { opacity: 1; }
+	.spellsheet__header { border-bottom: 2px solid #000; }
 	.rr-ref[data-ref] { border-bottom: none; cursor: auto; }
+	.rr-dice { border-bottom: none; cursor: auto; background: none; }
+	.prop-chip { border: 1px solid #999; color: #000; cursor: auto; }
+	.info-btn { display: none !important; }
+	.hp-adjust, .rest-buttons, .hp-readout__max { display: none !important; }
+	.hp-readout__max-print { display: inline; font-weight: 700; }
+	.hp-readout__current { color: #000; border-bottom: 1px solid #000; }
+	.hp-bar { border-color: #999; }
+	.hp-bar__fill { background: #ccc !important; }
+	/* Empty boxes to pencil in, filled ones still filled. */
+	.pip { border-color: #000; background: #fff; }
+	.pip.is-used { background: #000 !important; border-color: #000; }
+	.resource-row__recharge { border-color: #999; color: #000; }
+	.dice-popover { display: none !important; }
 	@page { margin: 12mm; }
+}
+
+/* ---- equipment actions ------------------------------------------- *
+   Unpack, choose and sell, on both the build step and the sheet. */
+.inventory__act {
+	padding: 2px 7px; background: var(--panel-2); color: var(--ink-dim);
+	border: 1px solid var(--line); border-radius: var(--radius);
+	font-family: var(--sans); font-size: 0.68rem; cursor: pointer;
+	white-space: nowrap;
+}
+.inventory__act:hover { border-color: var(--blue); color: var(--blue); }
+
+.item-list__acts { display: inline-flex; gap: 6px; margin-left: auto; }
+.item-list__acts .link-btn { font-size: 0.68rem; }
+
+/* ---- selling ----------------------------------------------------- */
+.sell-dialog__grid { display: flex; gap: 14px; flex-wrap: wrap; margin: 12px 0; }
+.sell-dialog__input {
+	width: 5em; padding: 4px 6px; text-align: center;
+	background: var(--panel-2); color: var(--ink);
+	border: 1px solid var(--line); border-radius: var(--radius);
+	font-family: var(--sans); font-size: 0.95rem;
+}
+.sell-dialog__rate { display: flex; align-items: center; gap: 4px; }
+.sell-dialog__presets { margin-bottom: 12px; }
+.sell-dialog__total { font-size: 1rem; padding: 8px 0; border-top: 1px solid var(--line); }
+.sell-dialog__total strong { color: var(--yellow); }
+
+/* ---- choosing a member of a group ------------------------------- */
+.group-choice { display: flex; flex-wrap: wrap; gap: 8px; }
+.group-choice__btn {
+	padding: 8px 14px; background: var(--panel-2); color: var(--ink);
+	border: 1px solid var(--line); border-radius: var(--radius);
+	font-family: var(--sans); font-size: 0.9rem; cursor: pointer;
+}
+.group-choice__btn:hover { border-color: var(--blue); color: var(--blue); }
+
+/* ---- the item builder ------------------------------------------- */
+.item-builder__name, .item-builder__notes {
+	width: 100%; padding: 6px 8px;
+	background: var(--panel-2); color: var(--ink);
+	border: 1px solid var(--line); border-radius: var(--radius);
+	font-family: var(--sans); font-size: 0.95rem;
+}
+.item-builder__notes { resize: vertical; line-height: 1.5; }
+.item-builder__grid {
+	display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;
+}
+.item-builder__grid input, .item-builder__grid select {
+	width: 100%; padding: 4px 6px;
+	background: var(--panel-2); color: var(--ink);
+	border: 1px solid var(--line); border-radius: var(--radius);
+	font-family: var(--sans); font-size: 0.9rem;
+}
+.item-builder__results { margin-top: 8px; }
+.item-builder__hits { display: flex; flex-wrap: wrap; gap: 6px; }
+.item-builder__hit {
+	padding: 3px 8px; background: var(--panel-2); color: var(--ink-dim);
+	border: 1px solid var(--line); border-radius: var(--radius);
+	font-family: var(--sans); font-size: 0.78rem; cursor: pointer;
+}
+.item-builder__hit:hover { border-color: var(--blue); color: var(--blue); }
+.item-builder__hit.is-active { border-color: var(--yellow); color: var(--yellow); }
+.item-builder__base { margin-top: 8px; font-size: 0.85rem; }
+.item-builder__actions { margin-top: 18px; }
+
+.checkbox-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 0.9rem; }
+
+.custom-item-list { list-style: none; margin: 12px 0 0; padding: 0; }
+.custom-item-list__row {
+	display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+	padding: 6px 0; border-bottom: 1px solid var(--line);
+}
+.custom-item-list__name { font-weight: 700; }
+.custom-item-list__meta { flex: 1; font-size: 0.75rem; color: var(--ink-dim); }
+
+/* ---- languages --------------------------------------------------- */
+.lang-known { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.lang-chip {
+	display: inline-flex; align-items: baseline; gap: 5px;
+	padding: 2px 8px; background: var(--panel-2);
+	border: 1px solid var(--line); border-radius: 999px; font-size: 0.82rem;
+}
+.lang-chip__src { font-size: 0.65rem; color: var(--ink-dim); }
+
+/* ---- slot recovery (Arcane Recovery and friends) ----------------- */
+.recovery-dialog__budget {
+	margin: 12px 0; padding: 8px 10px;
+	background: var(--panel-2); border: 1px solid var(--line);
+	border-radius: var(--radius);
+}
+.recovery-dialog__budget strong { color: var(--yellow); }
+.recovery-list { display: flex; flex-direction: column; gap: 6px; }
+.recovery-row {
+	display: flex; align-items: center; gap: 12px;
+	padding: 6px 10px; background: var(--panel-2);
+	border: 1px solid var(--line); border-radius: var(--radius);
+}
+.recovery-row__level { font-weight: 700; min-width: 5.5em; }
+.recovery-row__spent { flex: 1; font-size: 0.8rem; color: var(--ink-dim); }
+.recovery-row__controls { display: flex; align-items: center; gap: 6px; }
+.recovery-row__count {
+	min-width: 1.6em; text-align: center; font-weight: 700;
+	font-variant-numeric: tabular-nums;
 }
